@@ -1,0 +1,69 @@
+AI-HAT
+Product Requirements Document — Version 1.0
+April 2026  |  Confidential
+1. Project Overview
+2. Target User
+Primary User
+Industrial workers in factories or remote job sites
+Rural population with limited access to nearby clinics
+Non-tech-savvy individuals who need a guided, simple interface
+Problem Statement
+Users need a fast, accessible way to describe symptoms, measure basic vitals, and receive medical guidance — without travelling to a clinic or navigating complex healthcare apps.
+Success Looks Like
+User completes full symptom intake in under 3 minutes with no assistance
+Vitals are captured automatically and displayed with a clear Normal / Alert status
+User is connected to a doctor via video call and receives a prescription within the same session
+3. Pages and Structure
+Screen 1 — Home
+Purpose: Entry point — orient the user and start a checkup
+Key Elements: Large 'Start Checkup' CTA button, language selector (top corner), app name/logo, optional Emergency button (placeholder for V2)
+Screen 2 — AI Symptom Interaction
+Purpose: Collect patient symptoms via voice or text in a conversational interface
+Key Elements: 'Tell me your problem' prompt, microphone button, text fallback input field, chat-style message thread, AI response display
+Screen 3 — Vitals Display
+Purpose: Show real-time vitals captured from the connected hardware sensor
+Key Elements: SpO2 reading, Heart Rate reading, Blood Pressure reading, Status indicator per vital (Normal / Alert), auto-refresh / sync animation
+Screen 4 — AI Summary + Decision
+Purpose: Present the AI triage result and let user decide next step
+Key Elements: Structured symptom list, risk level badge (Green / Yellow / Red), AI-generated recommendation text, 'Connect to Doctor' button
+Screen 5 — Video Consultation
+Purpose: Real-time telemedicine session between patient and doctor
+Key Elements: Doctor video feed (main frame), patient self-preview (small overlay), side panel with live vitals and AI summary, mute / end call controls
+Screen 6 — End / Post-Consultation
+Purpose: Session wrap-up and prescription access
+Key Elements: 'Consultation Completed' confirmation, View Prescription button, Download / Print option, 'Start New Checkup' button
+Doctor Dashboard (Web App — Separate)
+Purpose: Doctor-facing interface to manage and conduct consultations
+Key Elements: Live patient queue with risk tags, consultation screen (video + patient info + AI triage + live vitals), prescription upload / notes module, session history and logs
+4. Features — Must Have
+AI Symptom Intake — Voice and text input that extracts symptoms and generates a structured summary
+Speech-to-Text — Converts spoken patient input to text using Google STT or Whisper API
+AI Triage Engine — Rule-based NLP that maps symptoms to a Low / Medium / High risk score
+Vitals Integration — Reads SpO2, Heart Rate, and Blood Pressure from a Bluetooth or serial-connected sensor
+Combined Health Report — Merges AI triage output with vitals into a single patient summary screen
+Video Consultation — WebRTC-based video call between patient device and doctor dashboard
+Doctor Dashboard — Web interface for queue management, live vitals view, and prescription upload
+Prescription Delivery — Doctor can upload a PDF or type notes; patient can view and download on the device
+Session Storage — Patient session data (symptoms, vitals, risk level, prescriptions) stored per consultation
+5. Features — Nice to Have
+Multi-language UI support beyond the initial language selector
+Offline mode for edge-layer triage when network is unavailable
+Emergency alert button that notifies a pre-set contact or emergency service
+Patient history — returning user can view past consultations
+Doctor rating and feedback after each session
+SMS / WhatsApp prescription delivery
+Lightweight ML model upgrade to replace rule-based NLP in V2
+6. Design Requirements
+7. Technical Requirements
+8. Content
+9. Success Criteria
+A first-time user with no tech experience can start a checkup and reach the vitals screen within 60 seconds without any training or help
+Vitals are captured from the hardware device and displayed on screen within 5 seconds of the Vitals screen loading
+The AI triage engine correctly categorizes at least 80% of test symptom inputs into the correct Low / Medium / High risk tier
+A doctor can accept a patient call, view the full AI summary and live vitals, and upload a prescription — all without leaving the dashboard
+The full patient-to-prescription flow completes end-to-end with no errors in a test environment
+The device app loads and is usable on a standard Android tablet (8-inch, mid-range hardware) within 3 seconds
+The doctor dashboard is fully functional on a desktop browser (Chrome) and a tablet browser
+10. Core API Summary
+The following APIs form the backbone of the backend. Each must be built and tested before UI integration.
+End of Document — AI-HAT V1 PRD

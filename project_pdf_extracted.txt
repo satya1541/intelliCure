@@ -1,0 +1,234 @@
+🧠 AI-HAT (V1) — TECHNICAL EXECUTION PLAN  
+This is structured into:  
+1. System Architecture  
+2. Detailed Process Flow  
+3. UI/UX Plan (Screen -by-screen)  
+4. Backend & Doctor Dashboard  
+5. Hardware Integration Plan  
+6. AI Module Design  
+7. Data Flow & APIs  
+ 
+🏗️ 1. SYSTEM ARCHITECTURE (V 1) 
+[User]  
+   ↓ 
+[AI-HAT Device (Tablet + Vitals)]  
+   ↓ 
+ ├── Edge Layer (UI + AI Triage Lite)  
+ ├── Integration Layer (Vitals Sync)  
+   ↓ 
+[Cloud Layer]  
+ ├── Telemedicine Server (WebRTC)  
+ ├── Backend APIs  
+ ├── Database  
+   ↓ 
+[Doctor Das hboard]  
+ 
+🔄 2. DETAILED PROCESS FLOW  
+🔹 MASTER FLOW  
+START  
+ ↓ 
+User taps "Start Checkup"  
+ ↓ 
+AI Symptom Intake (Voice/Text)  
+ ↓ 
+AI generates structured summary + risk level  
+ ↓ 
+Vitals captured (SpO 2, HR, BP)  
+ ↓ 
+Display combined report  
+ ↓ 
+Prompt: "Consult Docto r?" 
+ ↓ 
+IF YES → Initiate Video Call  
+ ↓ 
+Doctor views data + interacts  
+ ↓ 
+Prescription / Advice  
+ ↓ 
+END  
+ 
+🔹 AI TRIAGE FLOW (Agent Logic)  
+Input: Raw user speech/text  
+ ↓ 
+Speech -to-Text (if voice)  
+ ↓ 
+Symptom Extraction  
+ ↓ 
+Keyword + Intent Mapping  
+ ↓ 
+Risk Scorin g Engine  
+ ↓ 
+Output:  
+  - Symptoms list  
+  - Duration (if captured)  
+  - Risk: Low / Medium / High  
+ 
+🔹 DOCTOR FLOW  
+Doctor logs into dashboard  
+ ↓ 
+Sees incoming consultation request  
+ ↓ 
+Accept call  
+ ↓ 
+Views:  
+  - Patient summary  
+  - AI triage output  
+  - Live vita ls 
+ ↓ 
+Consults via video  
+ ↓ 
+Uploads prescription / notes  
+ ↓ 
+Session ends  
+ 
+🖥️ 3. UI / UX PLAN (VERY IMPORTANT)  
+Keep this ultra -simple . Your users may be:  
+ Workers  
+ Rural population  
+ Non -tech users  
+ 
+🔹 SCREEN 1: HOME  
+ 
+
+ 
+ 
+6 
+Elements:  
+ Big Button: “Start Checkup ”  
+ Language selection (top corner)  
+ Optional: Emergency button (future)  
+ 
+🔹 SCREEN 2: AI INTERACTION  
+
+ 
+
+ 
+ 
+7 
+Elements:  
+
+ “Tell me your problem ”  
+ Mic button 🎤  
+ Text fallback input  
+ Chat -style interaction  
+ 
+🔹 SCREEN 3: VITALS DISPLAY  
+ 
+ 
+
+ 
+6 
+Elements:  
+ SpO2  
+ HR  
+ BP  
+ Status indicators (Normal / Alert)  
+ 
+🔹 SCREEN 4: SUMMARY + DECISION  
+Show:  
+ AI Summary  
+
+ Risk Level (Color -coded)  
+o Green / Yellow / Red  
+Button:  
+👉 “Connect to Doctor ” 
+ 
+🔹 SCREEN 5: VIDEO CONSULTATION  
+ 
+ 
+ 
+6 
+Layout:  
+ Doctor video (mai n)  
+ Patient preview (small)  
+ Side panel:  
+o Vitals  
+o AI summary  
+
+ 
+🔹 SCREEN 6: END SCREEN  
+ “Consultation Completed ”  
+ Option:  
+o View prescription  
+o Print / Download  
+ 
+🧠🧠 4. DOCTOR DASHBOARD (WEB)  
+Core Modules:  
+1. Live Queue  
+ Incoming patients  
+ Risk level tags  
+2. Consultation Screen  
+ Video panel  
+ Patient info  
+ AI summary  
+ Live vitals feed  
+3. Prescription Module  
+ Upload PDF / type notes  
+4. History  
+ Patient logs  
+ Session records  
+ 
+🔌 5. HARDWARE INTEGRATION PLAN  
+Device:  
+ Android Tablet (preferred for speed)  
+Vitals Device:  
+ Choose one with:  
+o Serial / Bluetooth / API output  
+ 
+Integration Flow:  
+Vitals Device → Microcontroller (optional) → Tablet App  
+OR 
+Vitals Device → Direct Bluetooth → Tablet  
+ 
+Data Mapping Example:  
+Paramet er Source  UI 
+SpO2  Sensor  Display  
+HR Sensor  Display  
+BP Device  Display  
+ 
+🤖 6. AI MODULE DESIGN (PRACTICAL)  
+Keep it SIMPLE in V1  
+Components:  
+ Speech -to-Text (Google / Whisper API)  
+ Rule -based + lightweight NLP  
+ Predefined symptom library  
+ 
+Example Logic:  
+Input:  
+“Chest pain and sweating ” 
+Output:  
+Symptoms:  
+- Chest pain  
+- Sweating  
+ 
+Risk: HIGH  
+Recommendation: Immediate consultation  
+ 
+👉 Avoid:  
+ Deep diagnosis  
+ Complex ML initially  
+ 
+🌐 7. BACKEND & API STRUCTURE  
+Core APIs:  
+1. Patient Session API  
+ Create sessio n  
+ Store symptoms  
+2. Vitals API  
+ Push real -time data  
+3. Telemedicine API  
+ WebRTC signaling  
+4. Doctor API  
+ Login  
+ Accept call  
+ Upload prescription  
+ 
+Suggested Stack:  
+Frontend (Device):  
+ Flutter / React Native  
+Backend:  
+ Node.js / FastAPI  
+Video:  
+ WebRTC (Agora / Twilio)  
+DB: 
+ PostgreSQL / Firebase  
+ 
