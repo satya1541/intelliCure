@@ -1,9 +1,9 @@
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { useNavigate } from "react-router-dom"
 import { motion, AnimatePresence } from "framer-motion"
 import { 
   Home, Users, Video, FileText, Clock, LogOut,
-  AlertTriangle, CheckCircle, Search, Download, Bell, Activity, Mic, MicOff, Camera, PhoneOff, UploadCloud, VideoOff, X, Shield, ArrowLeft
+  AlertTriangle, CheckCircle, Search, Download, Bell, Activity, Mic, MicOff, Camera, PhoneOff, UploadCloud, VideoOff, X, Shield, ArrowLeft, Bot, Sparkles, Wand2, Loader2, Monitor
 } from "lucide-react"
 
 export default function DoctorDashboard() {
@@ -62,6 +62,7 @@ export default function DoctorDashboard() {
           <SidebarItem icon={<Home className="w-5 h-5" />} label="Dashboard" active={activeTab === "dashboard"} onClick={() => setActiveTab("dashboard")} />
           <SidebarItem icon={<Users className="w-5 h-5" />} label="Live Queue" active={activeTab === "queue"} badge="3" onClick={() => setActiveTab("queue")} />
           <SidebarItem icon={<Video className="w-5 h-5" />} label="Consultations" active={activeTab === "consultation"} onClick={() => setActiveTab("consultation")} />
+          <SidebarItem icon={<Monitor className="w-5 h-5" />} label="IntelliICU" onClick={() => navigate("/intelli-icu")} className="text-cyan-300 hover:bg-cyan-500/10 hover:text-cyan-200" />
           <SidebarItem icon={<FileText className="w-5 h-5" />} label="Prescriptions" active={activeTab === "prescriptions"} onClick={() => setActiveTab("prescriptions")} />
           <SidebarItem icon={<Clock className="w-5 h-5" />} label="Patient History" active={activeTab === "history"} onClick={() => setActiveTab("history")} />
         </nav>
@@ -448,13 +449,145 @@ function TabConsultation({ patient, liveQueue, onAcceptCall, onComplete }: any) 
   )
 }
 
+const AI_PIPELINE = [
+  {
+    title: "Reading the chart",
+    detail: "Extracting symptoms, duration, and triage context.",
+  },
+  {
+    title: "Cross-checking vitals",
+    detail: "Matching the live metrics against the complaint.",
+  },
+  {
+    title: "Drafting treatment",
+    detail: "Building a clean prescription and follow-up note.",
+  },
+  {
+    title: "Ready for review",
+    detail: "Preparing the draft for doctor approval.",
+  },
+]
+
+function getPrescriptionProfile(risk: string) {
+  if (risk === "HIGH") {
+    return {
+      badge: "High acuity",
+      headline: "Inflammation control draft",
+      summary: "Built from headache + fatigue with a higher-risk presentation.",
+      medication: "Ibuprofen 400mg",
+      dosage: "1 tablet every 6 hours",
+      duration: "3 days",
+      confidence: "96%",
+      note: "Ibuprofen 400 mg one tablet every 6 hours after food for 3 days. Add hydration, rest, and urgent review if symptoms worsen.",
+      transcriptSteps: [
+        "Ibuprofen 400 milligrams",
+        "one tablet every 6 hours after food",
+        "for 3 days",
+        "add hydration, rest, and urgent review if symptoms worsen",
+      ],
+      tags: ["Symptom match", "Vitals stable", "Safety checked"],
+    }
+  }
+
+  if (risk === "MEDIUM") {
+    return {
+      badge: "Moderate risk",
+      headline: "Symptom relief draft",
+      summary: "Balanced support for fever, cough, or body pain with follow-up guidance.",
+      medication: "Paracetamol 500mg",
+      dosage: "1 tablet every 8 hours",
+      duration: "2 days",
+      confidence: "93%",
+      note: "Paracetamol 500 mg one tablet every 8 hours for 2 days. Add steam inhalation, hydration, and follow-up if fever continues.",
+      transcriptSteps: [
+        "Paracetamol 500 milligrams",
+        "one tablet every 8 hours",
+        "for 2 days",
+        "add steam inhalation, hydration, and follow-up if fever continues",
+      ],
+      tags: ["Dose verified", "No red flags", "Follow-up included"],
+    }
+  }
+
+  return {
+    badge: "Low risk",
+    headline: "Simple recovery draft",
+    summary: "A lightweight plan for routine follow-up or mild symptoms.",
+    medication: "Paracetamol 500mg",
+    dosage: "As needed",
+    duration: "2 days",
+    confidence: "91%",
+    note: "Paracetamol 500 mg as needed for pain, rest, and hydration. Review if symptoms change.",
+    transcriptSteps: [
+      "Paracetamol 500 milligrams",
+      "as needed for pain",
+      "rest and hydration",
+      "review if symptoms change",
+    ],
+    tags: ["Routine care", "Simple monitoring", "Ready to issue"],
+  }
+}
+
 function TabPrescriptions({ patient, liveQueue }: any) {
   const activePatient = patient || liveQueue[0] || { name: "Demo Patient", symptoms: "General follow-up", duration: "1 day", risk: "LOW" }
+  const profile = getPrescriptionProfile(activePatient.risk)
+  const [isAiModalOpen, setIsAiModalOpen] = useState(false)
+  const [aiStage, setAiStage] = useState(0)
+  const [isDictating, setIsDictating] = useState(false)
+  const [voiceTranscript, setVoiceTranscript] = useState("")
+  const [medicalAdvice, setMedicalAdvice] = useState(profile.note)
+
+  useEffect(() => {
+    const nextProfile = getPrescriptionProfile(activePatient.risk)
+    setMedicalAdvice(nextProfile.note)
+    setVoiceTranscript("")
+    setIsDictating(false)
+    setAiStage(0)
+    setIsAiModalOpen(false)
+  }, [activePatient.name, activePatient.risk, activePatient.symptoms, activePatient.duration])
+
+  useEffect(() => {
+    if (!isDictating) return
+
+    const nextProfile = getPrescriptionProfile(activePatient.risk)
+    setVoiceTranscript("")
+    setMedicalAdvice("")
+
+    const timers = nextProfile.transcriptSteps.map((step, index) =>
+      window.setTimeout(() => {
+        const nextTranscript = nextProfile.transcriptSteps.slice(0, index + 1).join(". ")
+        setVoiceTranscript(nextTranscript)
+        setMedicalAdvice(nextTranscript)
+
+        if (index === nextProfile.transcriptSteps.length - 1) {
+          setVoiceTranscript(nextProfile.note)
+          setMedicalAdvice(nextProfile.note)
+          setIsDictating(false)
+        }
+      }, 700 + index * 850)
+    )
+
+    return () => timers.forEach(clearTimeout)
+  }, [isDictating, activePatient.name, activePatient.risk])
+
+  useEffect(() => {
+    if (!isAiModalOpen) {
+      setAiStage(0)
+      return
+    }
+
+    setAiStage(0)
+    const timers = [1, 2, 3].map((stage, index) =>
+      window.setTimeout(() => setAiStage(stage), 650 + index * 700)
+    )
+
+    return () => timers.forEach(clearTimeout)
+  }, [isAiModalOpen, activePatient.name, activePatient.risk])
 
   const draftFields = [
-    { label: "Medication", value: activePatient.risk === "HIGH" ? "Ibuprofen 400mg" : "Paracetamol 500mg" },
-    { label: "Dosage", value: "1 tablet every 6 hours" },
-    { label: "Duration", value: "3 days" },
+    { label: "Medication", value: profile.medication },
+    { label: "Dosage", value: profile.dosage },
+    { label: "Duration", value: profile.duration },
     { label: "Refills", value: "0" },
   ]
 
@@ -464,6 +597,17 @@ function TabPrescriptions({ patient, liveQueue }: any) {
     { patient: "Mohammed Ali", medication: "Chest Pain Workup", status: "Issued", time: "Yesterday, 05:10 PM" },
   ]
 
+  const handleStartDictation = () => {
+    if (isDictating) return
+    setIsDictating(true)
+  }
+
+  const handleApplyAiDraft = () => {
+    setMedicalAdvice(profile.note)
+    setVoiceTranscript(profile.note)
+    setIsAiModalOpen(false)
+  }
+
   return (
     <div className="max-w-6xl mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
       <div className="flex items-end justify-between gap-6">
@@ -471,8 +615,12 @@ function TabPrescriptions({ patient, liveQueue }: any) {
           <h2 className="text-2xl font-bold text-foreground mb-1">Prescriptions</h2>
           <p className="text-muted-foreground">Draft, save, and issue treatment notes with one pass.</p>
         </div>
-        <button className="px-4 py-2.5 rounded-lg bg-primary text-primary-foreground font-medium hover:bg-primary/90 transition shadow-[0_0_15px_rgba(124,58,237,0.3)] active:scale-95">
-          AI Suggest Draft
+        <button
+          onClick={() => setIsAiModalOpen(true)}
+          className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg bg-primary text-primary-foreground font-medium hover:bg-primary/90 transition shadow-[0_0_15px_rgba(124,58,237,0.3)] active:scale-95"
+        >
+          <Wand2 className="w-4 h-4" /> AI Suggest Draft
+          <span className="text-[10px] font-black uppercase tracking-[0.3em] opacity-70">Demo</span>
         </button>
       </div>
 
@@ -496,11 +644,69 @@ function TabPrescriptions({ patient, liveQueue }: any) {
             ))}
           </div>
 
-          <div className="mt-4">
+          <div className="mt-5 rounded-3xl border border-primary/15 bg-gradient-to-br from-primary/10 via-white/[0.03] to-emerald-500/10 p-5 shadow-[0_0_30px_rgba(124,58,237,0.12)]">
+            <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-[0.35em] text-primary/70 mb-2 flex items-center gap-2">
+                  <Mic className="w-3 h-3" /> Voice to text simulator
+                </p>
+                <h4 className="text-base font-bold text-foreground">Speak the prescription and watch the note fill itself.</h4>
+                <p className="text-sm text-muted-foreground mt-1">Simulated speech recognition is writing the prescription into the chart in real time.</p>
+              </div>
+              <button
+                type="button"
+                onClick={handleStartDictation}
+                disabled={isDictating}
+                className={`inline-flex items-center gap-2 rounded-full px-4 py-2.5 text-sm font-semibold transition ${
+                  isDictating
+                    ? "bg-success/15 text-success border border-success/25"
+                    : "bg-white/10 text-foreground border border-white/10 hover:bg-white/15"
+                }`}
+              >
+                {isDictating ? <MicOff className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
+                {isDictating ? "Listening..." : "Start voice dictation"}
+              </button>
+            </div>
+
+            <div className="mt-4 flex items-end gap-1 h-12">
+              {Array.from({ length: 12 }).map((_, index) => (
+                <motion.span
+                  key={index}
+                  animate={
+                    isDictating
+                      ? { height: [8, 28, 12, 22], opacity: [0.45, 1, 0.65, 0.95] }
+                      : { height: [8, 10], opacity: 0.35 }
+                  }
+                  transition={
+                    isDictating
+                      ? { duration: 0.9, repeat: Infinity, delay: index * 0.06, ease: "easeInOut" }
+                      : { duration: 0.2 }
+                  }
+                  className="block w-full rounded-full bg-gradient-to-t from-primary via-violet-500 to-emerald-400 origin-bottom"
+                />
+              ))}
+            </div>
+
+            <div className="mt-4 rounded-2xl border border-white/5 bg-background/60 p-4">
+              <div className="flex items-center justify-between gap-3 mb-2">
+                <span className="text-[10px] font-black uppercase tracking-[0.3em] text-muted-foreground">Live transcript</span>
+                <span className={`text-[10px] font-bold uppercase tracking-widest ${isDictating ? "text-success" : voiceTranscript ? "text-primary" : "text-muted-foreground"}`}>
+                  {isDictating ? "Transcribing" : voiceTranscript ? "Captured" : "Ready"}
+                </span>
+              </div>
+              <p className="text-sm leading-relaxed text-foreground/90 min-h-[48px]">
+                {voiceTranscript || "Press the mic to simulate speech-to-text in real time."}
+              </p>
+            </div>
+          </div>
+
+          <div className="mt-5">
             <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-2 block">Medical Advice</label>
             <textarea
               className="w-full min-h-[180px] bg-background border border-border rounded-xl p-4 text-sm text-foreground placeholder:text-muted-foreground resize-none outline-none focus:border-primary focus:ring-1 focus:ring-primary transition shadow-inner"
-              defaultValue="Continue observation. Recheck vitals after 48 hours if symptoms persist."
+              value={medicalAdvice}
+              onChange={(event) => setMedicalAdvice(event.target.value)}
+              placeholder="Type your medical advice and prescription here..."
             />
           </div>
 
@@ -548,7 +754,167 @@ function TabPrescriptions({ patient, liveQueue }: any) {
           </div>
         </div>
       </div>
+
+      <AnimatePresence>
+        {isAiModalOpen && (
+          <AiDraftModal
+            patient={activePatient}
+            profile={profile}
+            stage={aiStage}
+            onApply={handleApplyAiDraft}
+            onClose={() => setIsAiModalOpen(false)}
+          />
+        )}
+      </AnimatePresence>
     </div>
+  )
+}
+
+function AiDraftModal({ patient, profile, stage, onApply, onClose }: any) {
+  const activeStage = Math.min(stage, AI_PIPELINE.length - 1)
+  const progress = ((activeStage + 1) / AI_PIPELINE.length) * 100
+
+  return (
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6">
+      <motion.button className="absolute inset-0 bg-black/80 backdrop-blur-md" onClick={onClose} aria-label="Close AI draft modal" />
+
+      <motion.div
+        initial={{ scale: 0.95, y: 20, opacity: 0 }}
+        animate={{ scale: 1, y: 0, opacity: 1 }}
+        exit={{ scale: 0.97, y: 12, opacity: 0 }}
+        transition={{ type: "spring", stiffness: 240, damping: 24 }}
+        className="relative w-full max-w-5xl overflow-hidden rounded-[2rem] border border-white/10 bg-[#0b0915] shadow-[0_40px_120px_rgba(0,0,0,0.7)]"
+      >
+        <div
+          className="absolute inset-0"
+          style={{
+            background:
+              "radial-gradient(circle at top left, rgba(124,58,237,0.22), transparent 34%), radial-gradient(circle at bottom right, rgba(16,185,129,0.16), transparent 34%)",
+          }}
+        />
+        <div
+          className="absolute inset-0 opacity-30"
+          style={{
+            backgroundImage:
+              "linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px), linear-gradient(180deg, rgba(255,255,255,0.03) 1px, transparent 1px)",
+            backgroundSize: "36px 36px",
+          }}
+        />
+
+        <div className="relative z-10 grid gap-0 lg:grid-cols-[1.1fr_0.9fr]">
+          <div className="relative p-6 sm:p-8 lg:p-10 border-b lg:border-b-0 lg:border-r border-white/10 overflow-hidden">
+            <div className="flex items-start justify-between gap-6">
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-[0.4em] text-primary/70 mb-3 flex items-center gap-2">
+                  <Bot className="w-4 h-4" /> AI Suggest Draft
+                </p>
+                <h3 className="text-3xl font-black text-foreground">Drafting for {patient.name}</h3>
+                <p className="mt-2 text-sm text-muted-foreground max-w-xl">{profile.summary}</p>
+              </div>
+              <button onClick={onClose} className="w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-white/10 transition" aria-label="Close modal">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="mt-8 rounded-[1.75rem] border border-primary/20 bg-black/40 p-5 sm:p-6">
+              <div className="flex items-center gap-4">
+                <motion.div
+                  animate={{ scale: [1, 1.04, 1], rotate: [0, 2, 0] }}
+                  transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
+                  className="relative flex h-20 w-20 items-center justify-center rounded-full border border-primary/20 bg-gradient-to-br from-primary/30 to-emerald-400/20"
+                >
+                  <motion.div animate={{ rotate: 360 }} transition={{ duration: 12, repeat: Infinity, ease: "linear" }} className="absolute inset-0 rounded-full border border-dashed border-primary/30" />
+                  <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/15 text-primary">
+                    <Sparkles className="w-6 h-6" />
+                  </div>
+                </motion.div>
+
+                <div className="flex-1">
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="text-[10px] font-black uppercase tracking-[0.35em] text-muted-foreground">Reasoning pipeline</span>
+                    <span className="text-[10px] font-black uppercase tracking-[0.35em] text-success">{Math.round(progress)}%</span>
+                  </div>
+                  <div className="mt-3 h-2 rounded-full bg-white/5 overflow-hidden">
+                    <motion.div className="h-full rounded-full bg-gradient-to-r from-primary via-violet-500 to-emerald-400" initial={{ width: 0 }} animate={{ width: `${progress}%` }} transition={{ duration: 0.45 }} />
+                  </div>
+                  <p className="mt-3 text-sm text-foreground/90">{AI_PIPELINE[activeStage].title} - {AI_PIPELINE[activeStage].detail}</p>
+                </div>
+              </div>
+
+              <div className="mt-6 grid gap-3">
+                {AI_PIPELINE.map((step, index) => {
+                  const isActive = index <= activeStage
+
+                  return (
+                    <div
+                      key={step.title}
+                      className={`flex items-center gap-3 rounded-2xl border p-3 transition-all ${isActive ? "border-primary/25 bg-primary/10 shadow-[0_0_20px_rgba(124,58,237,0.12)]" : "border-white/5 bg-white/[0.03]"}`}
+                    >
+                      <div className={`flex h-9 w-9 items-center justify-center rounded-xl ${isActive ? "bg-primary text-white" : "bg-white/5 text-muted-foreground"}`}>
+                        {isActive ? <Loader2 className={`w-4 h-4 ${index === activeStage ? "animate-spin" : ""}`} /> : <span className="text-xs font-black">{index + 1}</span>}
+                      </div>
+                      <div>
+                        <p className="text-sm font-semibold text-foreground">{step.title}</p>
+                        <p className="text-xs text-muted-foreground">{step.detail}</p>
+                      </div>
+                      {isActive && <Sparkles className="ml-auto w-4 h-4 text-emerald-400" />}
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+
+            <div className="mt-6 flex flex-wrap gap-2">
+              {profile.tags.map((tag: string) => (
+                <span key={tag} className="rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-[10px] font-black uppercase tracking-widest text-muted-foreground">
+                  {tag}
+                </span>
+              ))}
+            </div>
+          </div>
+
+          <div className="bg-background/30 p-6 sm:p-8 lg:p-10">
+            <div className="glass-card rounded-[1.75rem] border border-white/10 p-6 shadow-[0_0_40px_rgba(0,0,0,0.28)]">
+              <p className="text-[10px] font-black uppercase tracking-[0.35em] text-muted-foreground mb-3">Suggested prescription</p>
+              <h4 className="text-2xl font-black text-foreground">{profile.medication}</h4>
+              <p className="mt-2 text-sm text-muted-foreground">{profile.headline}</p>
+
+              <div className="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-3">
+                {[
+                  { label: "Dosage", value: profile.dosage },
+                  { label: "Duration", value: profile.duration },
+                  { label: "Confidence", value: profile.confidence },
+                ].map((item) => (
+                  <div key={item.label} className="rounded-2xl border border-white/5 bg-white/5 p-4">
+                    <p className="text-[9px] font-black uppercase tracking-widest text-muted-foreground mb-2">{item.label}</p>
+                    <p className="text-sm font-bold text-foreground leading-tight">{item.value}</p>
+                  </div>
+                ))}
+              </div>
+
+              <div className="mt-4 rounded-2xl border border-white/5 bg-white/5 p-4">
+                <p className="text-[10px] font-black uppercase tracking-[0.3em] text-muted-foreground mb-2">AI note</p>
+                <p className="text-sm leading-relaxed text-foreground/90">{profile.note}</p>
+              </div>
+
+              <div className="mt-4 rounded-2xl border border-success/20 bg-success/10 p-4">
+                <p className="text-[10px] font-black uppercase tracking-[0.3em] text-success mb-2">Demo AI summary</p>
+                <p className="text-sm leading-relaxed text-foreground/90">{profile.summary}</p>
+              </div>
+
+              <div className="mt-4 flex flex-col sm:flex-row gap-3">
+                <button onClick={onApply} className="flex-1 rounded-2xl bg-primary px-4 py-4 font-semibold text-primary-foreground hover:bg-primary/90 transition shadow-[0_0_20px_rgba(124,58,237,0.35)]">
+                  Apply Draft
+                </button>
+                <button onClick={onClose} className="flex-1 rounded-2xl border border-white/10 bg-white/5 px-4 py-4 text-sm font-semibold text-foreground hover:bg-white/10 transition">
+                  Continue editing manually
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </motion.div>
+    </motion.div>
   )
 }
 

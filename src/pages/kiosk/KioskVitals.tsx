@@ -14,6 +14,7 @@ export default function KioskVitals() {
   const [phase, setPhase] = useState<Phase>("ready");
   const [progress, setProgress] = useState(0);
   const [countdown, setCountdown] = useState(5);
+  const [analysisCountdown, setAnalysisCountdown] = useState(3);
 
   useEffect(() => {
     if (phase !== "ready") return;
@@ -60,6 +61,26 @@ export default function KioskVitals() {
     }, interval);
     return () => clearInterval(iv);
   }, [phase]);
+
+  useEffect(() => {
+    if (phase !== "done") return;
+    setAnalysisCountdown(3);
+
+    let remaining = 3;
+    const iv = setInterval(() => {
+      remaining -= 1;
+
+      if (remaining <= 0) {
+        clearInterval(iv);
+        navigate("/kiosk/assessment");
+        return;
+      }
+
+      setAnalysisCountdown(remaining);
+    }, 1000);
+
+    return () => clearInterval(iv);
+  }, [phase, navigate]);
 
   // Interpolated values for realism
   const currentSpO2 = Math.min(98, Math.round(85 + (13 * (progress / 100))));
@@ -262,13 +283,14 @@ export default function KioskVitals() {
                 <h3 className="text-5xl font-black mb-4 tracking-tight">Captured.</h3>
                 <p className="text-muted-foreground text-lg px-2 mb-12 leading-relaxed">Your vitals are exceptionally stable and have been securely synced to our diagnostic AI.</p>
                 
-                <button
-                  onClick={() => navigate("/kiosk/assessment")}
-                  className="w-full h-16 rounded-[1.25rem] bg-white text-black font-black text-lg shadow-[0_0_50px_rgba(255,255,255,0.3)] hover:shadow-[0_0_80px_rgba(255,255,255,0.5)] hover:bg-neutral-100 hover:scale-[1.02] active:scale-95 transition-all flex items-center justify-center gap-3 group"
-                >
-                  Proceed to Analysis
-                  <ArrowLeft className="w-5 h-5 rotate-180 group-hover:translate-x-1.5 transition-transform" />
-                </button>
+                <div className="w-full h-16 rounded-[1.25rem] bg-white text-black font-black text-lg shadow-[0_0_50px_rgba(255,255,255,0.3)] flex items-center justify-center gap-3">
+                  <span className="inline-flex items-center gap-3">
+                    Analyzing...
+                    <span className="w-10 h-10 rounded-full bg-black/5 flex items-center justify-center text-base font-black tabular-nums">
+                      {analysisCountdown}
+                    </span>
+                  </span>
+                </div>
               </div>
 
               {/* Right side: Vertical stack of final metrics */}

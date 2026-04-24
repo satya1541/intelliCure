@@ -149,12 +149,9 @@ export default function LandingPage() {
             <span className="text-foreground font-semibold">IntelliCure</span>
             <span className="text-muted-foreground text-sm ml-2">© 2026</span>
           </div>
-          <div className="flex items-center gap-6 text-sm text-muted-foreground">
-            <a href="#" className="hover:text-foreground transition-colors">Privacy</a>
-            <a href="#" className="hover:text-foreground transition-colors">Terms</a>
-            <a href="#" className="hover:text-foreground transition-colors">Contact</a>
-            <a href="#" className="hover:text-foreground transition-colors">Docs</a>
-          </div>
+          <address className="max-w-md not-italic text-center md:text-right text-sm leading-relaxed text-muted-foreground">
+            Plot-9429, Cuttack - Puri Bypass Rd, B.B.Nagar, Baragarh, Bhubaneswar, Odisha 751018
+          </address>
         </div>
       </footer>
     </div>

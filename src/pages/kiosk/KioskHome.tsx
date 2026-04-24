@@ -102,7 +102,7 @@ export default function KioskHome() {
           initial={{ y: 20, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           transition={{ delay: 0.35, ...spring }}
-          className="text-hero-sub text-center text-base sm:text-lg md:text-xl xl:text-3xl leading-relaxed max-w-2xl mt-4 opacity-80 mb-8 px-2"
+          className="text-hero-sub text-center text-base sm:text-lg md:text-xl xl:text-[26px] leading-snug max-w-3xl mt-4 opacity-80 mb-8 px-2"
         >
           our most powerful AI ever deployed<br />
           in Health Ai

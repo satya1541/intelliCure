@@ -8,6 +8,7 @@ const TABLET_BACKGROUND_VIDEO = "https://d8j0ntlcm91z4.cloudfront.net/user_38xzZ
 export default function KioskLayout() {
   const location = useLocation();
   const [showVideo, setShowVideo] = useState(location.pathname === "/kiosk");
+  const showCallIndicator = location.pathname === "/kiosk/consult";
 
   useEffect(() => {
     if (location.pathname === "/kiosk") {
@@ -93,7 +94,7 @@ export default function KioskLayout() {
             }}
           >
             {/* Front camera (tiny pinhole, centered on top bezel of outer frame) */}
-            <div className="absolute top-[3px] left-1/2 -translate-x-1/2 z-50">
+            <div className="absolute top-[3px] left-1/2 -translate-x-1/2 z-50 flex items-center gap-1.5">
               <div
                 className="w-[7px] h-[7px] rounded-full"
                 style={{
@@ -103,6 +104,9 @@ export default function KioskLayout() {
                     "inset 0 0 1px rgba(255,255,255,0.4), 0 0 0 1px rgba(0,0,0,0.9)",
                 }}
               />
+              {showCallIndicator && (
+                <span className="w-1 h-1 rounded-full bg-emerald-400 animate-pulse shadow-[0_0_10px_rgba(16,185,129,0.85)]" />
+              )}
             </div>
 
             {/* Content */}

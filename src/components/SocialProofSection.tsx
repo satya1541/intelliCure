@@ -1,12 +1,12 @@
 import { useRef, useEffect } from "react"
 
 const brands = [
-  { name: "Vortex", letter: "V" },
-  { name: "Nimbus", letter: "N" },
-  { name: "Prysma", letter: "P" },
-  { name: "Cirrus", letter: "C" },
-  { name: "Kynder", letter: "K" },
-  { name: "Halcyn", letter: "H" },
+  { name: "Clino Health Innovation", letter: "C" },
+  { name: "Mo Ambulance", letter: "M" },
+  { name: "AMX-Verse", letter: "A" },
+  { name: "True Levy", letter: "T" },
+  { name: "Hi-Tech Hospital", letter: "H" },
+  { name: "Helomed", letter: "H" },
 ]
 
 export default function SocialProofSection() {

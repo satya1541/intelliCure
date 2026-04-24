@@ -31,7 +31,7 @@ export default function HeroSection() {
         </h1>
 
         {/* Subtext */}
-        <p className="text-hero-sub text-center text-base sm:text-lg md:text-xl xl:text-3xl leading-7 sm:leading-8 max-w-md mt-4 opacity-80">
+        <p className="text-hero-sub text-center text-base sm:text-lg md:text-xl xl:text-[26px] leading-snug max-w-2xl mt-4 opacity-80">
           our most powerful AI ever deployed<br />
           in Health Ai
         </p>

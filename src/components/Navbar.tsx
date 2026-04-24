@@ -17,6 +17,9 @@ export default function Navbar() {
         <Link to="/kiosk" className="flex items-center gap-1 text-foreground/90 text-sm md:text-base px-3 md:px-4 py-2 rounded-lg hover:bg-white/5 transition-colors text-blue-400 font-medium">
           Kiosk (Start Checkup)
         </Link>
+        <Link to="/intelli-icu" className="flex items-center gap-1 text-foreground/90 text-sm md:text-base px-3 md:px-4 py-2 rounded-lg hover:bg-white/5 transition-colors text-cyan-300 font-medium">
+          IntelliICU
+        </Link>
         <Link to="/doctor" className="flex items-center gap-1 text-foreground/90 text-sm md:text-base px-3 md:px-4 py-2 rounded-lg hover:bg-white/5 transition-colors text-blue-400 font-medium">
           Doctor Dashboard
         </Link>
