@@ -1,5 +1,6 @@
 import { Suspense, lazy } from "react"
 import { BrowserRouter, Routes, Route } from "react-router-dom"
+import { CubeLoader } from "@/components/CubeLoader"
 
 const LandingPage = lazy(() => import("@/pages/LandingPage"))
 const DoctorDashboard = lazy(() => import("@/pages/DoctorDashboard"))
@@ -16,8 +17,8 @@ const KioskFinished = lazy(() => import("@/pages/kiosk/KioskFinished"))
 
 function AppLoader() {
   return (
-    <div className="min-h-screen bg-background text-foreground flex items-center justify-center px-6 text-sm text-muted-foreground">
-      Loading interface...
+    <div className="min-h-screen bg-background text-foreground flex items-center justify-center px-6">
+      <CubeLoader size={96} />
     </div>
   )
 }

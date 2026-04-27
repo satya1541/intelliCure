@@ -1,7 +1,7 @@
 import React from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useNavigate } from "react-router-dom";
-import { Download, Activity, Shield, Brain, FileText } from "lucide-react";
+import { Download, Activity, Shield, Brain, FileText, ShoppingBag, ExternalLink } from "lucide-react";
 import { spring } from "./shared";
 
 const CONFETTI_COLORS = ["#7C3AED", "#10B981", "#EAB308", "#F43F5E", "#8B5CF6"];
@@ -91,6 +91,33 @@ export default function KioskFinished() {
           <button className="h-10 px-4 bg-primary text-white font-black rounded-xl flex items-center gap-2 hover:bg-primary/80 transition-all shadow-lg text-xs">
             <Download className="w-4 h-4" /> PDF
           </button>
+        </motion.div>
+
+        {/* Medicine Purchase Section */}
+        <motion.div
+          initial={{ opacity: 0, x: 30 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ delay: 0.58, ...spring }}
+          className="w-full glass-card rounded-3xl p-5 flex items-center gap-4 shadow-xl relative overflow-hidden group border border-emerald-400/15 hover:bg-white/5 transition-colors"
+        >
+          <div className="absolute inset-0 bg-gradient-to-r from-emerald-400/10 via-transparent to-primary/5 pointer-events-none" />
+          <div className="w-14 h-14 bg-emerald-400/10 rounded-[1.25rem] flex items-center justify-center shrink-0 shadow-inner group-hover:scale-110 transition-transform">
+            <ShoppingBag className="w-7 h-7 text-emerald-300" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-lg font-black text-white leading-tight">Buy Medicine Now</p>
+            <p className="text-muted-foreground text-xs font-medium">
+              Order prescribed medicines from Helomed
+            </p>
+          </div>
+          <a
+            href="https://helomed.app"
+            target="_blank"
+            rel="noreferrer"
+            className="h-10 px-4 bg-emerald-400 text-black font-black rounded-xl flex items-center gap-2 hover:bg-emerald-300 transition-all shadow-lg text-xs whitespace-nowrap"
+          >
+            Open Helomed <ExternalLink className="w-4 h-4" />
+          </a>
         </motion.div>
 
         {/* Metrics Row */}

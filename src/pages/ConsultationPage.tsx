@@ -2,6 +2,7 @@ import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { ArrowLeft, Mic, MicOff, PhoneOff, Video, VideoOff, Heart, Droplets, Activity, Brain, User, MessageSquare } from "lucide-react"
 import { Link, useNavigate } from "react-router-dom"
+import { CubeLoader } from "@/components/CubeLoader"
 
 export default function ConsultationPage() {
   const navigate = useNavigate()
@@ -66,9 +67,8 @@ export default function ConsultationPage() {
         <div className="flex-1 relative bg-gradient-to-br from-card to-background min-h-[300px] overflow-hidden">
           {isConnecting ? (
             <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 animate-fade-in z-10">
-              <div className="w-20 h-20 rounded-full border-2 border-primary/30 flex items-center justify-center relative">
-                <div className="absolute inset-0 rounded-full border-2 border-primary border-t-transparent animate-spin" />
-                <User className="w-8 h-8 text-primary" />
+              <div className="w-20 h-20 rounded-[1.75rem] border border-primary/20 bg-primary/10 flex items-center justify-center shadow-[0_0_28px_rgba(124,58,237,0.18)]">
+                <CubeLoader size={54} />
               </div>
               <div className="text-center">
                 <p className="text-foreground font-medium">Connecting to Doctor...</p>

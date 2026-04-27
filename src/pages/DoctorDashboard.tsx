@@ -3,8 +3,9 @@ import { useNavigate } from "react-router-dom"
 import { motion, AnimatePresence } from "framer-motion"
 import { 
   Home, Users, Video, FileText, Clock, LogOut,
-  AlertTriangle, CheckCircle, Search, Download, Bell, Activity, Mic, MicOff, Camera, PhoneOff, UploadCloud, VideoOff, X, Shield, ArrowLeft, Bot, Sparkles, Wand2, Loader2, Monitor
+  AlertTriangle, CheckCircle, Search, Download, Bell, Activity, Mic, MicOff, Camera, PhoneOff, UploadCloud, VideoOff, X, Shield, ArrowLeft, Bot, Sparkles, Wand2, Monitor
 } from "lucide-react"
+import { CubeLoader } from "@/components/CubeLoader"
 
 export default function DoctorDashboard() {
   const navigate = useNavigate()
@@ -851,7 +852,7 @@ function AiDraftModal({ patient, profile, stage, onApply, onClose }: any) {
                       className={`flex items-center gap-3 rounded-2xl border p-3 transition-all ${isActive ? "border-primary/25 bg-primary/10 shadow-[0_0_20px_rgba(124,58,237,0.12)]" : "border-white/5 bg-white/[0.03]"}`}
                     >
                       <div className={`flex h-9 w-9 items-center justify-center rounded-xl ${isActive ? "bg-primary text-white" : "bg-white/5 text-muted-foreground"}`}>
-                        {isActive ? <Loader2 className={`w-4 h-4 ${index === activeStage ? "animate-spin" : ""}`} /> : <span className="text-xs font-black">{index + 1}</span>}
+                        {isActive ? <CubeLoader size={14} /> : <span className="text-xs font-black">{index + 1}</span>}
                       </div>
                       <div>
                         <p className="text-sm font-semibold text-foreground">{step.title}</p>

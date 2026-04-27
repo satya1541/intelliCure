@@ -1,7 +1,8 @@
 import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
-import { ArrowRight, ArrowLeft, Heart, Droplets, Activity, RefreshCw, Bluetooth } from "lucide-react"
+import { ArrowRight, ArrowLeft, Heart, Droplets, Activity, Bluetooth } from "lucide-react"
 import { Link } from "react-router-dom"
+import { CubeLoader } from "@/components/CubeLoader"
 
 interface VitalReading {
   label: string
@@ -112,7 +113,7 @@ export default function VitalsPage() {
             </>
           ) : (
             <>
-              <RefreshCw className="w-4 h-4 text-muted-foreground animate-spin" />
+              <CubeLoader size={16} />
               <span className="text-xs text-muted-foreground">Connecting...</span>
             </>
           )}
@@ -129,9 +130,8 @@ export default function VitalsPage() {
         {/* Connecting state */}
         {isConnecting && (
           <div className="flex flex-col items-center justify-center h-full animate-fade-in gap-6">
-            <div className="w-24 h-24 rounded-full border-2 border-primary/30 flex items-center justify-center relative">
-              <div className="absolute inset-0 rounded-full border-2 border-primary border-t-transparent animate-spin" />
-              <Bluetooth className="w-10 h-10 text-primary" />
+            <div className="w-24 h-24 rounded-[1.75rem] border border-primary/20 bg-primary/10 flex items-center justify-center shadow-[0_0_28px_rgba(124,58,237,0.18)]">
+              <CubeLoader size={58} />
             </div>
             <div className="text-center">
               <p className="text-foreground font-semibold text-lg">Connecting to Sensor</p>
@@ -187,7 +187,7 @@ export default function VitalsPage() {
 
             {/* Sync animation */}
             <div className="flex items-center justify-center gap-2 text-muted-foreground text-xs mt-2">
-              <RefreshCw className="w-3 h-3 animate-spin" />
+              <CubeLoader size={12} />
               Auto-syncing...
             </div>
           </div>
