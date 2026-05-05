@@ -7,7 +7,7 @@ import {
 } from "lucide-react"
 import { CubeLoader } from "@/components/CubeLoader"
 
-const GOOGLE_MEET_URL = "https://meet.google.com/aqt-scfs-hwn"
+const GOOGLE_MEET_URL = "https://meet.google.com/uow-zujn-foz"
 
 const CONNECTING_POPUP_FEATURES = "popup,width=1280,height=800,left=120,top=80"
 
