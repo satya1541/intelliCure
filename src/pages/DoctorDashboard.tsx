@@ -1,17 +1,155 @@
-import { useEffect, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 import { useNavigate } from "react-router-dom"
 import { motion, AnimatePresence } from "framer-motion"
 import { 
   Home, Users, Video, FileText, Clock, LogOut,
-  AlertTriangle, CheckCircle, Search, Download, Bell, Activity, Mic, MicOff, Camera, PhoneOff, UploadCloud, VideoOff, X, Shield, ArrowLeft, Bot, Sparkles, Wand2, Monitor
+  AlertTriangle, CheckCircle, Search, Download, Bell, ExternalLink, Activity, Mic, MicOff, Camera, PhoneOff, UploadCloud, X, Shield, ArrowLeft, Bot, Sparkles, Wand2, Monitor
 } from "lucide-react"
 import { CubeLoader } from "@/components/CubeLoader"
+
+const GOOGLE_MEET_URL = "https://meet.google.com/aqt-scfs-hwn"
+
+const CONNECTING_POPUP_FEATURES = "popup,width=1280,height=800,left=120,top=80"
+
+function escapeHtml(value: string) {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/\"/g, "&quot;")
+    .replace(/'/g, "&#39;")
+}
+
+function buildMeetConnectingHtml(patientName: string) {
+  const safeName = escapeHtml(patientName)
+
+  return `<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Connecting to Google Meet</title>
+    <style>
+      :root { color-scheme: dark; }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background:
+          radial-gradient(circle at top, rgba(124,58,237,0.25), transparent 32%),
+          radial-gradient(circle at bottom right, rgba(16,185,129,0.18), transparent 30%),
+          #05050a;
+        font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        color: #fff;
+      }
+      .card {
+        width: min(420px, calc(100vw - 32px));
+        padding: 32px 28px;
+        border-radius: 28px;
+        background: rgba(255,255,255,0.06);
+        border: 1px solid rgba(255,255,255,0.12);
+        box-shadow: 0 24px 80px rgba(0,0,0,0.45);
+        text-align: center;
+      }
+      .spinner {
+        width: 72px;
+        height: 72px;
+        margin: 0 auto 20px;
+        border-radius: 999px;
+        border: 6px solid rgba(139,92,246,0.2);
+        border-top-color: #8b5cf6;
+        animation: spin 1s linear infinite;
+      }
+      h1 {
+        margin: 0;
+        font-size: 22px;
+        font-weight: 800;
+        letter-spacing: -0.02em;
+      }
+      p {
+        margin: 10px 0 0;
+        color: rgba(255,255,255,0.72);
+        line-height: 1.5;
+        font-size: 14px;
+      }
+      .pill {
+        display: inline-flex;
+        margin-top: 18px;
+        padding: 8px 12px;
+        border-radius: 999px;
+        background: rgba(255,255,255,0.08);
+        font-size: 11px;
+        letter-spacing: 0.18em;
+        text-transform: uppercase;
+        color: #c4b5fd;
+      }
+      @keyframes spin {
+        to { transform: rotate(360deg); }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="card">
+      <div class="spinner"></div>
+      <h1>Connecting to Google Meet...</h1>
+      <p>Preparing a secure consultation room for ${safeName}.</p>
+      <div class="pill">Secure session</div>
+    </div>
+  </body>
+</html>`
+}
 
 export default function DoctorDashboard() {
   const navigate = useNavigate()
   const [activeTab, setActiveTab] = useState("dashboard")
   const [selectedPatient, setSelectedPatient] = useState<any>(null)
   const [selectedHistory, setSelectedHistory] = useState<any>(null)
+  const meetWindowRef = useRef<Window | null>(null)
+
+  const prepareMeetPopup = useCallback((patientName: string) => {
+    const meetWindow = window.open(
+      "about:blank",
+      "intelliCureMeet",
+      CONNECTING_POPUP_FEATURES
+    )
+
+    if (!meetWindow) {
+      window.location.href = GOOGLE_MEET_URL
+      return null
+    }
+
+    meetWindow.document.open()
+    meetWindow.document.write(buildMeetConnectingHtml(patientName))
+    meetWindow.document.close()
+    meetWindow.focus()
+    meetWindowRef.current = meetWindow
+    return meetWindow
+  }, [])
+
+  const launchMeetPopup = useCallback(() => {
+    const meetWindow = meetWindowRef.current
+
+    if (meetWindow && !meetWindow.closed) {
+      meetWindow.location.href = GOOGLE_MEET_URL
+      meetWindow.focus()
+      return meetWindow
+    }
+
+    window.location.href = GOOGLE_MEET_URL
+    return null
+  }, [])
+
+  useEffect(() => {
+    return () => {
+      const meetWindow = meetWindowRef.current
+      if (meetWindow && !meetWindow.closed) {
+        meetWindow.close()
+      }
+    }
+  }, [])
 
   const liveQueue = [
     { id: 1, name: "Ramesh Kumar", age: 45, gender: "M", symptoms: "Headache + Fatigue", duration: "2 days", risk: "HIGH", waitTime: "8 min", vitalSpO2: 96, vitalHR: 102, vitalBP: "138/88" },
@@ -28,11 +166,19 @@ export default function DoctorDashboard() {
   ]
 
   const handleAcceptCall = (patient: any) => {
+    const meetWindow = prepareMeetPopup(patient.name)
+    if (!meetWindow) return
+
     setSelectedPatient(patient)
     setActiveTab("consultation")
   }
 
   const handleCompleteSession = () => {
+    const meetWindow = meetWindowRef.current
+    if (meetWindow && !meetWindow.closed) {
+      meetWindow.close()
+    }
+    meetWindowRef.current = null
     setSelectedPatient(null)
     setActiveTab("dashboard")
   }
@@ -103,7 +249,13 @@ export default function DoctorDashboard() {
             <TabDashboard liveQueue={liveQueue} onAcceptCall={handleAcceptCall} />
           )}
           {activeTab === "consultation" && (
-            <TabConsultation patient={selectedPatient} liveQueue={liveQueue} onAcceptCall={handleAcceptCall} onComplete={handleCompleteSession} />
+            <TabConsultation
+              patient={selectedPatient}
+              liveQueue={liveQueue}
+              onAcceptCall={handleAcceptCall}
+              onComplete={handleCompleteSession}
+                onOpenMeet={launchMeetPopup}
+            />
           )}
           {activeTab === "prescriptions" && (
             <TabPrescriptions patient={selectedPatient} liveQueue={liveQueue} />
@@ -228,7 +380,27 @@ function TabDashboard({ liveQueue, onAcceptCall }: any) {
   )
 }
 
-function TabConsultation({ patient, liveQueue, onAcceptCall, onComplete }: any) {
+function TabConsultation({ patient, liveQueue, onAcceptCall, onComplete, onOpenMeet }: any) {
+  const [isConnecting, setIsConnecting] = useState(true)
+  const [isMeetLive, setIsMeetLive] = useState(false)
+
+  const handleLaunchMeet = useCallback(() => {
+    onOpenMeet()
+    setIsConnecting(false)
+    setIsMeetLive(true)
+  }, [onOpenMeet])
+
+  useEffect(() => {
+    if (!patient) return
+
+    setIsConnecting(true)
+    setIsMeetLive(false)
+
+    const timer = window.setTimeout(handleLaunchMeet, 2200)
+
+    return () => clearTimeout(timer)
+  }, [patient?.id, handleLaunchMeet])
+
   if (!patient) {
     return (
       <div className="max-w-6xl mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -333,54 +505,40 @@ function TabConsultation({ patient, liveQueue, onAcceptCall, onComplete }: any) 
   return (
     <div className="flex flex-col lg:flex-row gap-4 lg:gap-6 h-full animate-in fade-in duration-300">
       {/* Video Panel - 60% */}
-      <div className="w-full lg:w-3/5 bg-black rounded-2xl overflow-hidden flex flex-col relative shadow-xl border border-white/10 min-h-[52vh] lg:min-h-0">
-        <div className="absolute top-4 left-4 bg-danger/90 text-white text-xs font-bold px-3 py-1 rounded-full flex items-center gap-2 z-10 border border-danger/50 shadow-[0_0_10px_rgba(239,68,68,0.5)]">
-          <div className="w-2 h-2 rounded-full bg-white animate-pulse" />
-          LIVE
+      <div className="w-full lg:w-3/5 bg-gradient-to-br from-black via-slate-950 to-background rounded-2xl overflow-hidden flex flex-col relative shadow-xl border border-white/10 min-h-[52vh] lg:min-h-0">
+        <div className={`absolute top-4 left-4 text-white text-xs font-bold px-3 py-1 rounded-full flex items-center gap-2 z-10 shadow-[0_0_10px_rgba(239,68,68,0.5)] border ${isMeetLive ? "bg-emerald-500/20 border-emerald-400/30 text-emerald-200" : "bg-amber-400/15 border-amber-400/30 text-amber-200"}`}>
+          <div className={`w-2 h-2 rounded-full animate-pulse ${isMeetLive ? "bg-emerald-300" : "bg-amber-300"}`} />
+          {isMeetLive ? "MEET LIVE" : "CONNECTING"}
         </div>
         <div className="absolute top-4 right-4 bg-black/60 px-3 py-1.5 rounded-lg text-white text-sm font-medium z-10 backdrop-blur-md border border-white/10">
           {patient.name}
         </div>
 
-        {/* Remote Video */}
-        <div className="flex-1 flex items-center justify-center relative bg-black">
-          <video
-            src="/patient%20video2.mp4"
-            autoPlay
-            loop
-            muted
-            playsInline
-            preload="auto"
-            className="w-full h-full object-cover opacity-90"
-          />
+        <div className="flex-1 flex items-center justify-center px-6 py-10 relative">
+          <div className="absolute inset-0 opacity-35 pointer-events-none" style={{ background: "radial-gradient(circle at 30% 20%, rgba(124,58,237,0.25), transparent 30%), radial-gradient(circle at 80% 70%, rgba(16,185,129,0.14), transparent 26%)" }} />
+
+          <div className="relative z-10 w-full max-w-lg rounded-[1.75rem] border border-white/10 bg-white/5 backdrop-blur-xl p-8 sm:p-10 text-center shadow-[0_30px_80px_rgba(0,0,0,0.35)]">
+            <div className="mx-auto w-20 h-20 rounded-[1.5rem] border border-primary/20 bg-primary/10 flex items-center justify-center shadow-[0_0_28px_rgba(124,58,237,0.18)]">
+              <CubeLoader size={54} />
+            </div>
+
+            <p className="mt-6 text-2xl font-black text-foreground">
+              {isMeetLive ? "Google Meet opened" : "Connecting to Google Meet..."}
+            </p>
+            <p className="mt-2 text-sm text-muted-foreground leading-relaxed">
+              {isMeetLive
+                ? "The popup is live. Continue the consultation in Google Meet."
+                : "Preparing a secure consultation room and opening it automatically."}
+            </p>
+
+            <div className="mt-6 flex items-center justify-center gap-2 text-xs uppercase tracking-[0.3em] text-muted-foreground">
+              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+              Secure handshake in progress
+            </div>
+          </div>
         </div>
 
-        {/* Local Video - Doctor */}
-        <div className="absolute bottom-4 right-4 sm:bottom-6 sm:right-6 lg:bottom-24 lg:right-8 w-28 h-40 sm:w-32 sm:h-44 lg:w-40 lg:h-56 bg-zinc-900 rounded-xl border-2 border-white/10 shadow-[0_0_30px_rgba(0,0,0,0.8)] overflow-hidden flex items-center justify-center">
-          <video
-            src="/doctor.mp4"
-            autoPlay
-            loop
-            muted
-            playsInline
-            preload="auto"
-            className="w-full h-full object-cover"
-          />
-          <div className="absolute bottom-2 left-2 text-xs text-white font-medium bg-black/60 backdrop-blur-md px-2 py-0.5 rounded border border-white/10">You</div>
-        </div>
-
-        {/* Video Controls */}
-        <div className="h-16 lg:h-20 bg-black/80 backdrop-blur-xl flex items-center justify-center gap-4 lg:gap-6 border-t border-white/10 flex-wrap px-4">
-          <button className="w-12 h-12 rounded-full bg-white/10 text-white flex items-center justify-center hover:bg-white/20 transition border border-white/5">
-            <MicOff className="w-5 h-5" />
-          </button>
-          <button className="w-12 h-12 rounded-full bg-white/10 text-white flex items-center justify-center hover:bg-white/20 transition border border-white/5">
-            <Camera className="w-5 h-5" />
-          </button>
-          <button onClick={onComplete} className="w-14 h-14 rounded-full bg-danger text-white flex items-center justify-center hover:bg-danger/90 shadow-[0_0_20px_rgba(239,68,68,0.4)] hover:scale-105 active:scale-95 transition">
-            <PhoneOff className="w-6 h-6" />
-          </button>
-        </div>
+        {/* Video Controls removed */}
       </div>
 
       {/* Patient Data Panel - 40% */}

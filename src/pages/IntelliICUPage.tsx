@@ -1,11 +1,13 @@
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { motion } from "framer-motion"
 import { useLocation, useNavigate } from "react-router-dom"
-import { Activity, AlertTriangle, ArrowLeft, Brain, Camera, Clock3, Droplets, Heart, Sparkles, Thermometer, Wind } from "lucide-react"
+import { Activity, AlertTriangle, ArrowLeft, Brain, Camera, Clock3, Droplets, Heart, RefreshCw, Sparkles, Thermometer, Wind } from "lucide-react"
+import Hls from "hls.js"
 
 const ECG_PATTERN = [0, 0, 0, 0.35, -0.45, 0.1, 0.2, -0.7, 0.5, 0, 1.2, -2.6, 7.8, -9.8, 4.2, 0.1, 0, 0, 0.15, 0, 0, 0]
 
 const DEFAULT_WAVEFORM_LENGTH = 96
+const LIVE_ICU_STREAM_URL = "/hls/device1.m3u8"
 
 type WaveformDefinition = {
   key: string
@@ -740,6 +742,7 @@ export default function IntelliICUPage() {
   const navigate = useNavigate()
   const location = useLocation()
   const routeContext = getRouteContext(location)
+  const liveFeedVideoRef = useRef<HTMLVideoElement | null>(null)
 
   const ambRegNo = routeContext.ambRegNo
   const simulationSeed = hashString([routeContext.patientName, routeContext.patientAge, routeContext.bed, routeContext.ambRegNo].filter(Boolean).join("|") || "intelli-icu")
@@ -762,6 +765,8 @@ export default function IntelliICUPage() {
   const [hasLiveVitals, setHasLiveVitals] = useState(false)
   const [dataMode, setDataMode] = useState<DataMode>("real")
   const [dummyFrame, setDummyFrame] = useState(0)
+  const [isLiveFeedReady, setIsLiveFeedReady] = useState(false)
+  const [streamReloadVersion, setStreamReloadVersion] = useState(0)
 
   useEffect(() => {
     let ws: WebSocket | undefined
@@ -851,6 +856,78 @@ export default function IntelliICUPage() {
 
     return () => window.clearInterval(intervalId)
   }, [dataMode])
+
+  useEffect(() => {
+    const video = liveFeedVideoRef.current
+
+    if (!video) {
+      return
+    }
+
+    let hls: Hls | null = null
+    setIsLiveFeedReady(false)
+
+    const tryPlay = () => {
+      video.play().catch(() => {})
+    }
+
+    const markReady = () => {
+      setIsLiveFeedReady(true)
+    }
+
+    const cleanupVideo = () => {
+      video.pause()
+      video.removeEventListener("loadedmetadata", tryPlay)
+      video.removeEventListener("canplay", markReady)
+      video.removeEventListener("playing", markReady)
+      video.removeEventListener("loadeddata", markReady)
+      video.removeAttribute("src")
+      video.load()
+    }
+
+    if (video.canPlayType("application/vnd.apple.mpegurl")) {
+      video.src = LIVE_ICU_STREAM_URL
+      video.addEventListener("loadedmetadata", tryPlay)
+      video.addEventListener("canplay", markReady)
+      video.addEventListener("playing", markReady)
+      video.addEventListener("loadeddata", markReady)
+
+      return () => {
+        cleanupVideo()
+      }
+    }
+
+    if (Hls.isSupported()) {
+      hls = new Hls({ lowLatencyMode: true })
+      hls.loadSource(LIVE_ICU_STREAM_URL)
+      hls.attachMedia(video)
+      hls.on(Hls.Events.MANIFEST_PARSED, tryPlay)
+      hls.on(Hls.Events.LEVEL_LOADED, markReady)
+      hls.on(Hls.Events.ERROR, (_, data) => {
+        if (data.fatal) {
+          console.error("HLS fatal error", data)
+        }
+      })
+    } else {
+      video.src = LIVE_ICU_STREAM_URL
+      video.addEventListener("loadedmetadata", tryPlay)
+      video.addEventListener("canplay", markReady)
+      video.addEventListener("playing", markReady)
+      video.addEventListener("loadeddata", markReady)
+    }
+
+    return () => {
+      if (hls) {
+        hls.destroy()
+      }
+      cleanupVideo()
+    }
+  }, [streamReloadVersion])
+
+  const handleRefreshFeed = () => {
+    setIsLiveFeedReady(false)
+    setStreamReloadVersion((version) => version + 1)
+  }
 
   const { oxygen, heartRate, respiratoryRate, temperature, systolic, diastolic } = vitals
   const isRealMode = dataMode === "real"
@@ -1019,23 +1096,42 @@ export default function IntelliICUPage() {
                 <p className="text-[10px] font-black uppercase tracking-[0.35em] text-muted-foreground">Patient Camera</p>
                 <h2 className="mt-1 text-lg font-bold text-foreground">Live ICU Feed</h2>
               </div>
-              <div className="flex items-center gap-2 rounded-full border border-danger/25 bg-danger/10 px-3 py-1 text-[10px] font-black uppercase tracking-widest text-danger">
-                <span className="h-2 w-2 rounded-full bg-danger animate-pulse" />
-                Live stream
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={handleRefreshFeed}
+                  className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-[10px] font-black uppercase tracking-widest text-white/85 transition hover:bg-white/10"
+                  title="Reload camera feed"
+                  aria-label="Reload camera feed"
+                >
+                  <RefreshCw className="h-3.5 w-3.5" />
+                  Refresh
+                </button>
+                <div className="flex items-center gap-2 rounded-full border border-danger/25 bg-danger/10 px-3 py-1 text-[10px] font-black uppercase tracking-widest text-danger">
+                  <span className="h-2 w-2 rounded-full bg-danger animate-pulse" />
+                  Live stream
+                </div>
               </div>
             </div>
 
             <div className="relative aspect-[16/10] overflow-hidden bg-black">
               <video
-                src="/patient%20live%20feed.mp4"
-                poster="/patient_camera.png"
+                ref={liveFeedVideoRef}
                 autoPlay
                 muted
-                loop
                 playsInline
-                preload="auto"
+                crossOrigin="anonymous"
+                preload="metadata"
                 className="absolute inset-0 h-full w-full object-cover object-center opacity-95"
               />
+              {!isLiveFeedReady && (
+                <div className="absolute inset-0 flex items-center justify-center bg-black/35 backdrop-blur-[1px] pointer-events-none">
+                  <div className="rounded-2xl border border-white/10 bg-black/50 px-4 py-3 text-center shadow-lg">
+                    <p className="text-[10px] font-black uppercase tracking-[0.35em] text-cyan-300">Connecting stream</p>
+                    <p className="mt-1 text-sm font-semibold text-white/90">Loading live ICU camera feed...</p>
+                  </div>
+                </div>
+              )}
               <div className="absolute inset-0 bg-gradient-to-t from-black/65 via-transparent to-black/15" />
               <div className="absolute inset-0 bg-[linear-gradient(transparent_0%,rgba(255,255,255,0.04)_50%,transparent_100%)] bg-[length:100%_7px] opacity-40 pointer-events-none" />
 
