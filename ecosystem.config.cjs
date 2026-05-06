@@ -1,25 +1,27 @@
-const path = require("path")
-
 const rootDir = __dirname
+const npmCommand = process.platform === "win32" ? "npm.cmd" : "npm"
 
 module.exports = {
   apps: [
     {
       name: "intelliCure-frontend",
       cwd: rootDir,
-      script: "npm.cmd",
-      args: "run dev:frontend",
+      script: npmCommand,
+      interpreter: "none",
+      args: "run start:frontend",
       env: {
-        NODE_ENV: "development",
+        NODE_ENV: "production",
       },
     },
     {
       name: "intelliCure-backend",
-      cwd: path.join(rootDir, "AI DOC Backend"),
-      script: "npm.cmd",
-      args: "start",
+      cwd: rootDir,
+      script: npmCommand,
+      interpreter: "none",
+      args: "run start:backend",
       env: {
-        NODE_ENV: "development",
+        NODE_ENV: "production",
+        PORT: "4002",
       },
     },
   ],
