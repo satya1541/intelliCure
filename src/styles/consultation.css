@@ -1,0 +1,760 @@
+@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600&family=Playfair+Display:wght@600;700&display=swap');
+
+.consultation-root {
+  --bg: #0b1116;
+  --surface: rgba(17, 26, 36, 0.96);
+  --surface-2: rgba(24, 36, 48, 0.92);
+  --border: rgba(120, 150, 170, 0.2);
+  --text: #e7eef5;
+  --muted: #9fb0bf;
+  --accent: #2ea3d1;
+  --accent-strong: #71c9e8;
+  --shadow: 0 24px 60px rgba(0, 0, 0, 0.45);
+  position: relative;
+  min-height: 100vh;
+  color: var(--text);
+  font-family: 'Montserrat', 'Segoe UI', sans-serif;
+  background: radial-gradient(circle at top, #15212a 0%, var(--bg) 50%, #0a0f14 100%);
+  overflow: hidden;
+}
+
+.consultation-root::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image:
+    linear-gradient(120deg, rgba(46, 163, 209, 0.12), transparent 55%),
+    radial-gradient(circle at 10% 20%, rgba(46, 163, 209, 0.14), transparent 45%),
+    radial-gradient(circle at 90% 10%, rgba(65, 196, 232, 0.12), transparent 40%);
+  pointer-events: none;
+  z-index: -1;
+}
+
+.consultation-root * {
+  box-sizing: border-box;
+}
+
+.consultation-root a {
+  color: inherit;
+}
+
+.consultation-root .page {
+  min-height: 100vh;
+  padding: 48px 6vw 64px;
+  animation: pageFade 0.6s ease both;
+}
+
+.consultation-root .page-header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 24px;
+  flex-wrap: wrap;
+  margin-bottom: 32px;
+}
+
+.consultation-root .page-header h1 {
+  margin: 0;
+  font-family: 'Playfair Display', serif;
+  font-size: clamp(2rem, 3vw, 2.8rem);
+  letter-spacing: -0.03em;
+}
+
+.consultation-root .eyebrow {
+  margin: 0 0 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  font-size: 0.72rem;
+  color: var(--muted);
+}
+
+.consultation-root .subtitle {
+  margin: 8px 0 0;
+  color: var(--muted);
+  max-width: 520px;
+}
+
+.consultation-root .header-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.consultation-root .status-chip {
+  padding: 10px 16px;
+  border-radius: 999px;
+  background: rgba(46, 163, 209, 0.12);
+  color: var(--accent-strong);
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  border: 1px solid rgba(120, 150, 170, 0.2);
+}
+
+.consultation-root .status-chip--ready {
+  background: rgba(50, 188, 138, 0.18);
+  color: #6fe2b3;
+}
+
+.consultation-root .role-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 24px;
+}
+
+.consultation-root .role-card {
+  position: relative;
+  display: grid;
+  gap: 14px;
+  padding: 32px;
+  border-radius: 24px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: inherit;
+  text-decoration: none;
+  box-shadow: var(--shadow);
+  overflow: hidden;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  animation: floatIn 0.7s ease both;
+}
+
+.consultation-root .role-card:nth-child(2) {
+  animation-delay: 0.08s;
+}
+
+.consultation-root .role-card::before {
+  content: '';
+  position: absolute;
+  inset: -40% -10% auto auto;
+  width: 240px;
+  height: 240px;
+  background: radial-gradient(circle at center, rgba(46, 163, 209, 0.24), transparent 70%);
+  transform: translate(30%, -30%);
+}
+
+.consultation-root .role-card--doctor {
+  background: linear-gradient(135deg, rgba(20, 33, 44, 0.95), rgba(14, 23, 32, 0.95));
+}
+
+.consultation-root .role-card--ward {
+  background: linear-gradient(135deg, rgba(18, 30, 40, 0.95), rgba(12, 20, 28, 0.95));
+}
+
+.consultation-root .role-card__icon {
+  width: 64px;
+  height: 64px;
+  border-radius: 16px;
+  background: var(--accent);
+  color: #ffffff;
+  display: grid;
+  place-items: center;
+  text-align: center;
+  font-weight: 700;
+  font-size: 0.85rem;
+  line-height: 1;
+  letter-spacing: 0.05em;
+  white-space: nowrap;
+  margin-bottom: 18px;
+  box-shadow: 0 12px 30px rgba(46, 163, 209, 0.35);
+}
+
+.consultation-root .role-card h2 {
+  margin: 0 0 8px;
+  font-size: 1.35rem;
+}
+
+.consultation-root .role-card p {
+  margin: 0 0 18px;
+  color: var(--muted);
+}
+
+.consultation-root .role-card:hover {
+  transform: translateY(-6px);
+  box-shadow: 0 28px 60px rgba(0, 0, 0, 0.4);
+}
+
+.consultation-root .role-card:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 4px;
+}
+
+.consultation-root .pill-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.consultation-root .pill {
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: rgba(46, 163, 209, 0.16);
+  color: var(--accent-strong);
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.consultation-root .pill--light {
+  background: rgba(46, 163, 209, 0.12);
+}
+
+.consultation-root .select-list {
+  display: grid;
+  gap: 12px;
+}
+
+.consultation-root .select-link {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  padding: 12px 16px;
+  border-radius: 16px;
+  text-decoration: none;
+  color: inherit;
+  border: 1px solid rgba(102, 140, 164, 0.28);
+  background: rgba(16, 26, 35, 0.7);
+  transition: transform 0.2s ease, border 0.2s ease, box-shadow 0.2s ease;
+  cursor: pointer;
+  font: inherit;
+}
+
+.consultation-root .select-link:hover {
+  transform: translateY(-2px);
+  border-color: rgba(113, 201, 232, 0.55);
+  box-shadow: 0 14px 30px rgba(0, 0, 0, 0.35);
+}
+
+.consultation-root .select-link--active {
+  border-color: rgba(113, 201, 232, 0.75);
+  box-shadow: 0 18px 34px rgba(0, 0, 0, 0.45);
+}
+
+.consultation-root .select-name {
+  font-weight: 600;
+}
+
+.consultation-root .select-tag {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: rgba(46, 163, 209, 0.2);
+  color: var(--accent-strong);
+}
+
+.consultation-root .doctor-layout,
+.consultation-root .ward-layout {
+  display: grid;
+  grid-template-columns: 260px minmax(0, 1fr) 260px;
+  gap: 24px;
+}
+
+.consultation-root .sidebar {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 22px;
+  box-shadow: var(--shadow);
+  min-width: 0;
+  overflow: hidden;
+}
+
+.consultation-root .sidebar h3 {
+  margin: 0 0 16px;
+  font-size: 1rem;
+  word-break: break-word;
+}
+
+.consultation-root .ward-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: 12px;
+}
+
+.consultation-root .ward-list li {
+  list-style: none;
+}
+
+.consultation-root .ward-item {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: var(--surface-2);
+  border: 1px solid transparent;
+  color: inherit;
+  cursor: pointer;
+  transition: border 0.2s ease, transform 0.2s ease;
+  font: inherit;
+}
+
+.consultation-root .ward-item--active {
+  border: 1px solid rgba(113, 201, 232, 0.55);
+  transform: translateY(-1px);
+}
+
+.consultation-root .ward-name {
+  font-weight: 600;
+}
+
+.consultation-root .ward-status {
+  font-size: 0.78rem;
+  padding: 4px 8px;
+  border-radius: 999px;
+  background: rgba(46, 163, 209, 0.16);
+  color: var(--accent-strong);
+}
+
+.consultation-root .main-panel {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 24px;
+  box-shadow: var(--shadow);
+  display: grid;
+  gap: 20px;
+}
+
+.consultation-root .panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.consultation-root .panel-header h2 {
+  margin: 0;
+  font-size: 1.3rem;
+}
+
+.consultation-root .badge {
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: rgba(29, 122, 161, 0.12);
+  color: var(--accent-strong);
+  font-size: 0.78rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.consultation-root .call-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 18px;
+  border-radius: 16px;
+  background: linear-gradient(135deg, rgba(20, 34, 45, 0.95), rgba(17, 27, 36, 0.95));
+  border: 1px solid rgba(65, 166, 210, 0.2);
+}
+
+.consultation-root .call-card h3,
+.consultation-root .incoming-card h2,
+.consultation-root .incoming-card h4 {
+  margin: 0 0 6px;
+}
+
+.consultation-root .incoming-card h4,
+.consultation-root .incoming-card p {
+  word-break: normal;
+  overflow-wrap: anywhere;
+}
+
+.consultation-root .call-card p,
+.consultation-root .incoming-card p {
+  margin: 0;
+  color: var(--muted);
+}
+
+.consultation-root .video-area {
+  min-height: 260px;
+  background: #070b0f;
+  color: #d0d6dd;
+  border-radius: 18px;
+  border: 1px solid #1b242c;
+  display: grid;
+  place-items: center;
+  text-transform: uppercase;
+  letter-spacing: 0.16em;
+  font-size: 0.72rem;
+  overflow: hidden;
+}
+
+.consultation-root .video-iframe {
+  width: 100%;
+  height: 100%;
+  min-height: 360px;
+  border: none;
+}
+
+.consultation-root .incoming-panel {
+  display: grid;
+  gap: 16px;
+  align-content: start;
+}
+
+.consultation-root .incoming-empty {
+  margin: 0;
+  padding: 16px;
+  border-radius: 16px;
+  border: 1px dashed var(--border);
+  background: var(--surface-2);
+  color: var(--muted);
+}
+
+.consultation-root .incoming-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 24px;
+  box-shadow: var(--shadow);
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 16px;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.consultation-root .incoming-card--live {
+  border: 1px solid rgba(113, 201, 232, 0.6);
+  background: linear-gradient(135deg, rgba(18, 34, 46, 0.98), rgba(14, 26, 36, 0.98));
+  box-shadow: 0 24px 50px rgba(0, 0, 0, 0.5);
+}
+
+.consultation-root .button-row {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  justify-content: flex-start;
+}
+
+.consultation-root .incoming-card .button-row {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  width: 100%;
+}
+
+.consultation-root .incoming-card .button-row .btn {
+  width: 100%;
+}
+
+.consultation-root .btn {
+  border: none;
+  padding: 12px 18px;
+  border-radius: 999px;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, opacity 0.2s ease;
+  white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+
+.consultation-root .btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  box-shadow: none;
+  transform: none;
+}
+
+.consultation-root .btn--primary {
+  background: var(--accent);
+  color: #ffffff;
+  box-shadow: 0 16px 30px rgba(46, 163, 209, 0.35);
+}
+
+.consultation-root .btn--primary:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 20px 34px rgba(46, 163, 209, 0.45);
+}
+
+.consultation-root .btn--ghost {
+  background: transparent;
+  color: var(--text);
+  border: 1px solid rgba(120, 150, 170, 0.35);
+}
+
+.consultation-root .btn--accept {
+  background: #2f8f6c;
+  color: #ffffff;
+}
+
+.consultation-root .btn--reject {
+  background: #c84f4f;
+  color: #ffffff;
+}
+
+.consultation-root .back-button {
+  padding: 10px 16px;
+  font-size: 0.85rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.consultation-root .calling-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(5, 12, 18, 0.65);
+  display: grid;
+  place-items: center;
+  backdrop-filter: blur(4px);
+  animation: fadeIn 0.2s ease;
+  z-index: 10;
+}
+
+.consultation-root .calling-modal {
+  background: var(--surface);
+  border-radius: 20px;
+  padding: 32px;
+  width: min(90vw, 420px);
+  text-align: center;
+  border: 1px solid rgba(120, 150, 170, 0.22);
+  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.45);
+  animation: popIn 0.3s ease;
+}
+
+.consultation-root .calling-loader {
+  margin-top: 18px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.consultation-root .calling-modal h2 {
+  margin: 6px 0 8px;
+}
+
+.consultation-root .calling-modal p {
+  color: var(--muted);
+}
+
+.consultation-root .socket-chip {
+  padding: 8px 12px;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  border: 1px solid rgba(120, 150, 170, 0.4);
+  background: rgba(12, 20, 28, 0.7);
+}
+
+.consultation-root .socket-chip--connected {
+  border-color: rgba(88, 210, 170, 0.6);
+  color: #7fe9c6;
+}
+
+.consultation-root .socket-chip--disconnected,
+.consultation-root .socket-chip--error {
+  border-color: rgba(210, 88, 88, 0.6);
+  color: #f0a1a1;
+}
+
+.consultation-root .doctor-page {
+  --accent: #35b9ff;
+  --accent-strong: #9fe7ff;
+  --surface: rgba(10, 21, 30, 0.96);
+  --surface-2: rgba(16, 30, 42, 0.92);
+  --border: rgba(88, 150, 190, 0.25);
+  --shadow: 0 24px 60px rgba(3, 14, 24, 0.6);
+  background: radial-gradient(circle at 20% -10%, rgba(53, 185, 255, 0.22), transparent 60%), radial-gradient(circle at 90% 10%, rgba(97, 228, 255, 0.16), transparent 45%);
+}
+
+.consultation-root .ward-page {
+  --accent: #ff8a4c;
+  --accent-strong: #ffd0a8;
+  --surface: rgba(22, 16, 22, 0.96);
+  --surface-2: rgba(30, 20, 28, 0.92);
+  --border: rgba(200, 120, 140, 0.25);
+  --shadow: 0 24px 60px rgba(20, 5, 15, 0.6);
+  background: radial-gradient(circle at 15% -10%, rgba(255, 138, 76, 0.24), transparent 60%), radial-gradient(circle at 85% 5%, rgba(255, 203, 128, 0.18), transparent 45%);
+}
+
+.consultation-root .doctor-page .badge {
+  background: rgba(53, 185, 255, 0.2);
+  color: #cfefff;
+}
+
+.consultation-root .ward-page .badge {
+  background: rgba(255, 154, 76, 0.2);
+  color: #ffe5cf;
+}
+
+.consultation-root .doctor-page .call-card,
+.consultation-root .ward-page .call-card {
+  background: linear-gradient(135deg, rgba(16, 34, 48, 0.98), rgba(10, 24, 36, 0.98));
+}
+
+.consultation-root .ward-page .call-card {
+  border-color: rgba(255, 154, 76, 0.25);
+  background: linear-gradient(135deg, rgba(34, 20, 28, 0.98), rgba(22, 14, 20, 0.98));
+}
+
+.consultation-root .doctor-page .incoming-card--live {
+  border: 1px solid rgba(53, 185, 255, 0.65);
+  background: linear-gradient(135deg, rgba(18, 36, 50, 0.98), rgba(12, 26, 38, 0.98));
+}
+
+.consultation-root .ward-page .incoming-card--live {
+  border: 1px solid rgba(255, 154, 76, 0.65);
+  background: linear-gradient(135deg, rgba(36, 22, 30, 0.98), rgba(24, 16, 22, 0.98));
+}
+
+.consultation-root .doctor-page .ward-item--active {
+  border: 1px solid rgba(53, 185, 255, 0.6);
+}
+
+.consultation-root .ward-page .ward-item--active {
+  border: 1px solid rgba(255, 154, 76, 0.6);
+}
+
+.consultation-root .doctor-page .video-area,
+.consultation-root .ward-page .video-area {
+  border-color: rgba(53, 185, 255, 0.2);
+}
+
+.consultation-root .ward-page .video-area {
+  border-color: rgba(255, 154, 76, 0.22);
+}
+
+.consultation-root .doctor-page .main-panel,
+.consultation-root .ward-page .main-panel {
+  background: linear-gradient(180deg, rgba(10, 20, 30, 0.98), rgba(8, 16, 24, 0.98));
+  border: 1px solid rgba(53, 185, 255, 0.2);
+  box-shadow: 0 30px 70px rgba(3, 14, 24, 0.55);
+}
+
+.consultation-root .doctor-page .sidebar,
+.consultation-root .ward-page .sidebar {
+  background: linear-gradient(180deg, rgba(8, 18, 26, 0.98), rgba(6, 12, 18, 0.98));
+  border: 1px solid rgba(53, 185, 255, 0.22);
+}
+
+.consultation-root .doctor-page .incoming-panel,
+.consultation-root .ward-page .incoming-panel {
+  align-content: start;
+}
+
+.consultation-root .toast {
+  position: fixed;
+  right: 24px;
+  bottom: 24px;
+  padding: 12px 16px;
+  border-radius: 14px;
+  background: rgba(16, 26, 35, 0.92);
+  border: 1px solid rgba(113, 201, 232, 0.4);
+  color: var(--text);
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.45);
+  z-index: 20;
+  animation: toastIn 0.3s ease both;
+}
+
+@keyframes floatIn {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes pageFade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes popIn {
+  from {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes toastIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (max-width: 1100px) {
+  .consultation-root .doctor-layout,
+  .consultation-root .ward-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .consultation-root .incoming-card {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .consultation-root .call-card {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}
+
+@media (max-width: 720px) {
+  .consultation-root .page {
+    padding: 36px 5vw 56px;
+  }
+
+  .consultation-root .page-header {
+    align-items: flex-start;
+  }
+
+  .consultation-root .page-header h1 {
+    font-size: 1.8rem;
+  }
+
+  .consultation-root .role-card,
+  .consultation-root .sidebar,
+  .consultation-root .main-panel,
+  .consultation-root .incoming-card {
+    padding: 20px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .consultation-root *,
+  .consultation-root *::before,
+  .consultation-root *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+}

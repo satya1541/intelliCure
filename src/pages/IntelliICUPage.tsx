@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react"
 import { motion } from "framer-motion"
 import { useLocation, useNavigate } from "react-router-dom"
-import { Activity, AlertTriangle, ArrowLeft, Brain, Camera, Clock3, Droplets, Heart, RefreshCw, Sparkles, Thermometer, Wind } from "lucide-react"
+import { Activity, ArrowLeft, Camera, Clock3, Droplets, Heart, RefreshCw, Sparkles, Thermometer, Wind } from "lucide-react"
 import Hls from "hls.js"
 
 const ECG_PATTERN = [0, 0, 0, 0.35, -0.45, 0.1, 0.2, -0.7, 0.5, 0, 1.2, -2.6, 7.8, -9.8, 4.2, 0.1, 0, 0, 0.15, 0, 0, 0]
@@ -938,14 +938,6 @@ export default function IntelliICUPage() {
 
   const ecgSeverity: Severity = !hasLiveVitals ? "stable" : oxygen < 92 || heartRate > 115 || respiratoryRate > 25 || temperature > 38.0 || systolic > 150 ? "critical" : oxygen < 94 || heartRate > 100 || respiratoryRate > 22 || temperature > 37.7 ? "watch" : "stable"
 
-  const alerts = hasLiveVitals ? [
-    oxygen < 94 && { title: "SpO2 dip detected", detail: `Oxygen level fell to ${oxygen}%`, severity: "critical" as const },
-    heartRate > 108 && { title: "Tachycardia spike", detail: `Heart rate jumped to ${heartRate} bpm`, severity: "critical" as const },
-    respiratoryRate > 24 && { title: "Respiratory stress", detail: `Breathing rate rose to ${respiratoryRate} bpm`, severity: "watch" as const },
-    temperature > 38.0 && { title: "Temperature escalation", detail: `Temperature reached ${temperature}°C`, severity: "watch" as const },
-    systolic > 145 && { title: "Blood pressure instability", detail: `Systolic pressure peaked at ${systolic} mmHg`, severity: "critical" as const },
-    ecgSeverity !== "stable" && { title: "ECG rhythm anomaly", detail: ecgSeverity === "critical" ? "Irregular spike pattern detected" : "Rhythm variation under observation", severity: ecgSeverity },
-  ].filter(Boolean) as Array<{ title: string; detail: string; severity: Severity }> : []
   const oxygenDisplay = isRealMode ? (hasLiveVitals ? vitals.oxygen.toFixed(1) : "--") : activeVitals.oxygen.toFixed(1)
   const heartRateDisplay = isRealMode ? (hasLiveVitals ? String(vitals.heartRate) : "--") : String(activeVitals.heartRate)
   const respiratoryDisplay = isRealMode ? (hasLiveVitals ? String(vitals.respiratoryRate) : "--") : String(activeVitals.respiratoryRate)
@@ -970,13 +962,28 @@ export default function IntelliICUPage() {
   const displayBedLabel = isRealMode ? (routeContext.bed ? `Bed ${routeContext.bed}` : "Bed --") : (routeContext.bed ? `Bed ${routeContext.bed}` : dummyContext.bedLabel)
   const displayShiftLabel = isRealMode ? (routeContext.shift || "Awaiting handoff") : (routeContext.shift || dummyContext.shiftLabel)
   const cameraBedLabel = isRealMode ? (routeContext.bed || "Bed --") : (routeContext.bed || dummyContext.cameraBedLabel)
-  const visibleWarnings = isRealMode ? alerts : dummyContext.warnings
-  const warningPillLabel = isRealMode ? (hasLiveVitals ? `${visibleWarnings.length} ${visibleWarnings.length === 1 ? "warning" : "warnings"}` : "Waiting") : dummyContext.warningPillLabel
-  const warningPillTone = isRealMode ? (hasLiveVitals ? (visibleWarnings.length > 0 ? "border border-danger/25 bg-danger/10 text-danger" : "border border-success/25 bg-success/10 text-success") : "border border-white/10 bg-white/5 text-muted-foreground") : dummyContext.warningPillTone
   const waveformSummaryLabel = isRealMode ? (hasLiveVitals ? `${heartRate} bpm` : hasActiveWaveforms ? "Waveforms live" : "-- bpm") : dummyContext.waveformSummaryLabel
   const waveformSummaryTone = isRealMode ? (hasLiveVitals ? statusTone : hasActiveWaveforms ? "text-success" : "text-muted-foreground") : dummyContext.waveformSummaryTone
   const liveMonitoringLabel = isRealMode ? (hasLiveVitals ? "SpO2 and ECG sync active" : hasActiveWaveforms ? "Waveform stream active" : "Waiting for telemetry") : dummyContext.liveMonitoringLabel
   const clinicalReadoutLabel = isRealMode ? (hasLiveVitals ? (ecgSeverity === "critical" ? "Spike pattern detected" : ecgSeverity === "watch" ? "Irregularity under review" : "Sinus rhythm stable") : hasActiveWaveforms ? "Lead packets streaming" : "Awaiting live stream") : dummyContext.clinicalReadoutLabel
+  const consultationChannels = [
+    {
+      label: "Doctor",
+      subtitle: "Open the doctor consultation console and start a live call.",
+      action: "Call doctor",
+      route: "/consultation/doctor",
+      badge: "MD",
+      badgeTone: "border-cyan-300/20 bg-cyan-300/10 text-cyan-200",
+    },
+    {
+      label: "Ward",
+      subtitle: "Open the ward consultation console and reach the nursing station.",
+      action: "Call ward",
+      route: "/consultation/ward",
+      badge: "WARD",
+      badgeTone: "border-emerald-300/20 bg-emerald-300/10 text-emerald-200",
+    },
+  ]
 
   return (
     <div className="relative min-h-screen overflow-hidden bg-background text-foreground">
@@ -1163,44 +1170,39 @@ export default function IntelliICUPage() {
             <div className="absolute inset-0 bg-gradient-to-br from-primary/10 via-transparent to-cyan-400/10 pointer-events-none" />
             <div className="relative z-10 flex items-center justify-between gap-4">
               <div>
-                <p className="text-[10px] font-black uppercase tracking-[0.35em] text-muted-foreground">AI warning</p>
-                <h3 className="mt-1 text-lg font-black text-foreground">Anomaly monitor</h3>
+                <p className="text-[10px] font-black uppercase tracking-[0.35em] text-muted-foreground">Call control</p>
+                <h3 className="mt-1 text-lg font-black text-foreground">Doctor & ward</h3>
               </div>
-              <div className={`rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-widest ${warningPillTone}`}>
-                {warningPillLabel}
+              <div className="rounded-full border border-success/25 bg-success/10 px-3 py-1 text-[10px] font-black uppercase tracking-widest text-success">
+                2 channels
               </div>
             </div>
 
-            <div className="relative z-10 mt-3 space-y-2">
-              {visibleWarnings.length > 0 ? (
-                visibleWarnings.slice(0, 3).map((item, index) => (
-                  <div
-                    key={`${item.title}-${index}`}
-                    className={`flex items-start gap-3 rounded-2xl border p-3 ${item.severity === "critical" ? "border-danger/20 bg-danger/10" : "border-warning/20 bg-warning/10"}`}
-                  >
-                    <div className={`rounded-xl p-2 ${item.severity === "critical" ? "bg-danger/15 text-danger" : "bg-warning/15 text-warning"}`}>
-                      <AlertTriangle className="h-4 w-4" />
-                    </div>
+            <div className="relative z-10 mt-3 space-y-3">
+              {consultationChannels.map((channel) => (
+                <button
+                  key={channel.label}
+                  type="button"
+                  onClick={() => navigate(channel.route)}
+                  className="group w-full rounded-2xl border border-white/10 bg-black/20 p-4 text-left transition hover:-translate-y-0.5 hover:border-primary/25 hover:bg-white/5"
+                  aria-label={`Open ${channel.label.toLowerCase()} consultation`}
+                >
+                  <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0 flex-1">
-                      <p className="text-sm font-semibold text-foreground">{item.title}</p>
-                      <p className="text-xs text-muted-foreground">{item.detail}</p>
+                      <p className="text-[10px] font-black uppercase tracking-[0.35em] text-muted-foreground">{channel.label}</p>
+                      <h4 className="mt-1 text-base font-black text-foreground">{channel.label}</h4>
+                      <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{channel.subtitle}</p>
                     </div>
-                    <span className={`mt-1 rounded-full border px-2 py-1 text-[9px] font-black uppercase tracking-widest ${item.severity === "critical" ? "border-danger/25 text-danger" : "border-warning/25 text-warning"}`}>
-                      {item.severity}
-                    </span>
+                    <div className={`shrink-0 rounded-full border px-3 py-1 text-[9px] font-black uppercase tracking-widest ${channel.badgeTone}`}>
+                      {channel.badge}
+                    </div>
                   </div>
-                ))
-              ) : (
-                <div className="flex items-center gap-3 rounded-2xl border border-success/15 bg-success/10 p-3">
-                  <div className="rounded-xl bg-success/15 p-2 text-success">
-                    <Brain className="h-4 w-4" />
+
+                  <div className="mt-4 inline-flex items-center rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.3em] text-foreground/80 transition group-hover:border-primary/25 group-hover:text-foreground">
+                    {channel.action}
                   </div>
-                  <div>
-                    <p className="text-sm font-semibold text-foreground">No issues detected</p>
-                    <p className="text-xs text-muted-foreground">Vitals are currently within the expected range.</p>
-                  </div>
-                </div>
-              )}
+                </button>
+              ))}
             </div>
           </motion.section>
         </aside>

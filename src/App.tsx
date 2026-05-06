@@ -3,6 +3,14 @@ import { BrowserRouter, Routes, Route } from "react-router-dom"
 import { CubeLoader } from "@/components/CubeLoader"
 
 const LandingPage = lazy(() => import("@/pages/LandingPage"))
+const HomePage = lazy(() => import("@/pages/HomePage"))
+const SymptomsPage = lazy(() => import("@/pages/SymptomsPage"))
+const VitalsPage = lazy(() => import("@/pages/VitalsPage"))
+const SummaryPage = lazy(() => import("@/pages/SummaryPage"))
+const ConsultationPage = lazy(() => import("@/pages/ConsultationPage"))
+const ConsultationDoctorPage = lazy(() => import("@/pages/ConsultationDoctorPage"))
+const ConsultationWardPage = lazy(() => import("@/pages/ConsultationWardPage"))
+const EndPage = lazy(() => import("@/pages/EndPage"))
 const DoctorDashboard = lazy(() => import("@/pages/DoctorDashboard"))
 const IntelliICUPage = lazy(() => import("@/pages/IntelliICUPage"))
 
@@ -29,6 +37,16 @@ export default function App() {
       <Suspense fallback={<AppLoader />}>
         <Routes>
           <Route path="/" element={<LandingPage />} />
+          <Route path="/home" element={<HomePage />} />
+          <Route path="/symptoms" element={<SymptomsPage />} />
+          <Route path="/vitals" element={<VitalsPage />} />
+          <Route path="/summary" element={<SummaryPage />} />
+          <Route path="/consultation" element={<ConsultationPage />} />
+          <Route path="/consultation/doctor/:doctorId" element={<ConsultationDoctorPage />} />
+          <Route path="/consultation/doctor" element={<ConsultationDoctorPage />} />
+          <Route path="/consultation/ward/:wardId" element={<ConsultationWardPage />} />
+          <Route path="/consultation/ward" element={<ConsultationWardPage />} />
+          <Route path="/end" element={<EndPage />} />
 
           {/* Kiosk Nested Routes */}
           <Route path="/kiosk" element={<KioskLayout />}>
