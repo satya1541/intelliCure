@@ -3,6 +3,7 @@ import { motion } from "framer-motion"
 import { useLocation, useNavigate } from "react-router-dom"
 import { Activity, ArrowLeft, Camera, Clock3, Droplets, Heart, RefreshCw, Sparkles, Thermometer, Wind } from "lucide-react"
 import Hls from "hls.js"
+import IcuCallControlPanel from "./IcuCallControlPanel"
 
 const ECG_PATTERN = [0, 0, 0, 0.35, -0.45, 0.1, 0.2, -0.7, 0.5, 0, 1.2, -2.6, 7.8, -9.8, 4.2, 0.1, 0, 0, 0.15, 0, 0, 0]
 
@@ -657,7 +658,22 @@ function WaveformCard({
 }
 
 function isSameVitalIdentifier(entry: IncomingVital, identifier: number | string) {
-  return String(entry.parameterId ?? "").toLowerCase() === String(identifier).toLowerCase() || String(entry.parameterName ?? "").toLowerCase() === String(identifier).toLowerCase()
+  const normalize = (value: string) => value.trim().toLowerCase().replace(/[\s_-]+/g, "")
+
+  return normalize(String(entry.parameterId ?? "")) === normalize(String(identifier)) || normalize(String(entry.parameterName ?? "")) === normalize(String(identifier))
+}
+
+function coerceVitalNumber(value: unknown) {
+  if (typeof value === "number") {
+    return Number.isFinite(value) ? value : null
+  }
+
+  if (typeof value === "string" && value.trim()) {
+    const parsed = Number(value)
+    return Number.isFinite(parsed) ? parsed : null
+  }
+
+  return null
 }
 
 function extractVitalsUpdate(payload: any): Partial<LiveVitalsState> | null {
@@ -672,21 +688,23 @@ function extractVitalsUpdate(payload: any): Partial<LiveVitalsState> | null {
     const findParam = (identifiers: Array<number | string>) =>
       readings.find((entry) => identifiers.some((identifier) => isSameVitalIdentifier(entry, identifier)))
 
+    const readParamValue = (identifiers: Array<number | string>) => coerceVitalNumber(findParam(identifiers)?.value)
+
     const nextVitals: Partial<LiveVitalsState> = {}
 
-    const spo2 = findParam([251, "SpO2"])
-    const heartRate = findParam([259, "PR", "HR"])
-    const respiratoryRate = findParam([258, "RR"])
-    const temperature = findParam([1051, 1052, "T1", "T2"])
-    const systolic = findParam([351, "NIBP-S"])
-    const diastolic = findParam([352, "NIBP-D"])
+    const spo2 = readParamValue([251, "SpO2", "SPO2", "Oxygen", "oxygen", "oxygenSaturation"])
+    const heartRate = readParamValue([259, "PR", "HR", "Heart Rate", "heartRate", "heart_rate", "Pulse", "Pulse Rate", "pulseRate", "heartbeat", "heartBeat", "BPM", "bpm"])
+    const respiratoryRate = readParamValue([258, "RR", "Respiratory Rate", "respiratoryRate", "respiratory_rate", "respRate", "resp_rate"])
+    const temperature = readParamValue([1051, 1052, "T1", "T2", "Temperature", "temperature"])
+    const systolic = readParamValue([351, "NIBP-S", "Systolic", "systolic"])
+    const diastolic = readParamValue([352, "NIBP-D", "Diastolic", "diastolic"])
 
-    if (typeof spo2?.value === "number" && spo2.value >= 0) nextVitals.oxygen = spo2.value
-    if (typeof heartRate?.value === "number" && heartRate.value >= 0) nextVitals.heartRate = heartRate.value
-    if (typeof respiratoryRate?.value === "number" && respiratoryRate.value >= 0) nextVitals.respiratoryRate = respiratoryRate.value
-    if (typeof temperature?.value === "number" && temperature.value >= 0) nextVitals.temperature = temperature.value
-    if (typeof systolic?.value === "number" && systolic.value >= 0) nextVitals.systolic = systolic.value
-    if (typeof diastolic?.value === "number" && diastolic.value >= 0) nextVitals.diastolic = diastolic.value
+    if (typeof spo2 === "number" && spo2 > 0) nextVitals.oxygen = spo2
+    if (typeof heartRate === "number" && heartRate > 0) nextVitals.heartRate = heartRate
+    if (typeof respiratoryRate === "number" && respiratoryRate > 0) nextVitals.respiratoryRate = respiratoryRate
+    if (typeof temperature === "number" && temperature > 0) nextVitals.temperature = temperature
+    if (typeof systolic === "number" && systolic > 0) nextVitals.systolic = systolic
+    if (typeof diastolic === "number" && diastolic > 0) nextVitals.diastolic = diastolic
 
     return Object.keys(nextVitals).length > 0 ? nextVitals : null
   }
@@ -702,12 +720,19 @@ function extractVitalsUpdate(payload: any): Partial<LiveVitalsState> | null {
 
   const nextVitals: Partial<LiveVitalsState> = {}
 
-  if (typeof dashboardVitals.spo2?.value === "number" && dashboardVitals.spo2.value >= 0) nextVitals.oxygen = dashboardVitals.spo2.value
-  if (typeof dashboardVitals.heartRate?.value === "number" && dashboardVitals.heartRate.value >= 0) nextVitals.heartRate = dashboardVitals.heartRate.value
-  if (typeof dashboardVitals.respiratoryRate?.value === "number" && dashboardVitals.respiratoryRate.value >= 0) nextVitals.respiratoryRate = dashboardVitals.respiratoryRate.value
-  if (typeof dashboardVitals.temperature?.value === "number" && dashboardVitals.temperature.value >= 0) nextVitals.temperature = dashboardVitals.temperature.value
-  if (typeof dashboardVitals.bloodPressure?.sys === "number" && dashboardVitals.bloodPressure.sys >= 0) nextVitals.systolic = dashboardVitals.bloodPressure.sys
-  if (typeof dashboardVitals.bloodPressure?.dia === "number" && dashboardVitals.bloodPressure.dia >= 0) nextVitals.diastolic = dashboardVitals.bloodPressure.dia
+  const dashboardSpo2 = coerceVitalNumber(dashboardVitals.spo2?.value ?? dashboardVitals.spO2?.value ?? dashboardVitals.spo2 ?? dashboardVitals.oxygen?.value ?? dashboardVitals.oxygen)
+  const dashboardHeartRate = coerceVitalNumber(dashboardVitals.heartRate?.value ?? dashboardVitals.heartBeat?.value ?? dashboardVitals.hr?.value ?? dashboardVitals.pulseRate?.value ?? dashboardVitals.pulse?.value ?? dashboardVitals.heartRate ?? dashboardVitals.heartBeat ?? dashboardVitals.hr ?? dashboardVitals.pulseRate ?? dashboardVitals.pulse)
+  const dashboardRespiratoryRate = coerceVitalNumber(dashboardVitals.respiratoryRate?.value ?? dashboardVitals.respRate?.value ?? dashboardVitals.respirationRate?.value ?? dashboardVitals.respiratoryRate ?? dashboardVitals.respRate ?? dashboardVitals.respirationRate)
+  const dashboardTemperature = coerceVitalNumber(dashboardVitals.temperature?.value ?? dashboardVitals.temperature)
+  const dashboardSystolic = coerceVitalNumber(dashboardVitals.bloodPressure?.sys ?? dashboardVitals.systolic?.value ?? dashboardVitals.systolic)
+  const dashboardDiastolic = coerceVitalNumber(dashboardVitals.bloodPressure?.dia ?? dashboardVitals.diastolic?.value ?? dashboardVitals.diastolic)
+
+  if (typeof dashboardSpo2 === "number" && dashboardSpo2 > 0) nextVitals.oxygen = dashboardSpo2
+  if (typeof dashboardHeartRate === "number" && dashboardHeartRate > 0) nextVitals.heartRate = dashboardHeartRate
+  if (typeof dashboardRespiratoryRate === "number" && dashboardRespiratoryRate > 0) nextVitals.respiratoryRate = dashboardRespiratoryRate
+  if (typeof dashboardTemperature === "number" && dashboardTemperature > 0) nextVitals.temperature = dashboardTemperature
+  if (typeof dashboardSystolic === "number" && dashboardSystolic > 0) nextVitals.systolic = dashboardSystolic
+  if (typeof dashboardDiastolic === "number" && dashboardDiastolic > 0) nextVitals.diastolic = dashboardDiastolic
 
   return Object.keys(nextVitals).length > 0 ? nextVitals : null
 }
@@ -966,24 +991,6 @@ export default function IntelliICUPage() {
   const waveformSummaryTone = isRealMode ? (hasLiveVitals ? statusTone : hasActiveWaveforms ? "text-success" : "text-muted-foreground") : dummyContext.waveformSummaryTone
   const liveMonitoringLabel = isRealMode ? (hasLiveVitals ? "SpO2 and ECG sync active" : hasActiveWaveforms ? "Waveform stream active" : "Waiting for telemetry") : dummyContext.liveMonitoringLabel
   const clinicalReadoutLabel = isRealMode ? (hasLiveVitals ? (ecgSeverity === "critical" ? "Spike pattern detected" : ecgSeverity === "watch" ? "Irregularity under review" : "Sinus rhythm stable") : hasActiveWaveforms ? "Lead packets streaming" : "Awaiting live stream") : dummyContext.clinicalReadoutLabel
-  const consultationChannels = [
-    {
-      label: "Doctor",
-      subtitle: "Open the doctor consultation console and start a live call.",
-      action: "Call doctor",
-      route: "/consultation/doctor",
-      badge: "MD",
-      badgeTone: "border-cyan-300/20 bg-cyan-300/10 text-cyan-200",
-    },
-    {
-      label: "Ward",
-      subtitle: "Open the ward consultation console and reach the nursing station.",
-      action: "Call ward",
-      route: "/consultation/ward",
-      badge: "WARD",
-      badgeTone: "border-emerald-300/20 bg-emerald-300/10 text-emerald-200",
-    },
-  ]
 
   return (
     <div className="relative min-h-screen overflow-hidden bg-background text-foreground">
@@ -1167,43 +1174,7 @@ export default function IntelliICUPage() {
             transition={{ duration: 0.45, delay: 0.05 }}
             className="glass-card relative overflow-hidden rounded-[2rem] border border-white/8 bg-white/[0.03] p-4 shadow-[0_24px_80px_rgba(0,0,0,0.26)]"
           >
-            <div className="absolute inset-0 bg-gradient-to-br from-primary/10 via-transparent to-cyan-400/10 pointer-events-none" />
-            <div className="relative z-10 flex items-center justify-between gap-4">
-              <div>
-                <p className="text-[10px] font-black uppercase tracking-[0.35em] text-muted-foreground">Call control</p>
-                <h3 className="mt-1 text-lg font-black text-foreground">Doctor & ward</h3>
-              </div>
-              <div className="rounded-full border border-success/25 bg-success/10 px-3 py-1 text-[10px] font-black uppercase tracking-widest text-success">
-                2 channels
-              </div>
-            </div>
-
-            <div className="relative z-10 mt-3 space-y-3">
-              {consultationChannels.map((channel) => (
-                <button
-                  key={channel.label}
-                  type="button"
-                  onClick={() => navigate(channel.route)}
-                  className="group w-full rounded-2xl border border-white/10 bg-black/20 p-4 text-left transition hover:-translate-y-0.5 hover:border-primary/25 hover:bg-white/5"
-                  aria-label={`Open ${channel.label.toLowerCase()} consultation`}
-                >
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0 flex-1">
-                      <p className="text-[10px] font-black uppercase tracking-[0.35em] text-muted-foreground">{channel.label}</p>
-                      <h4 className="mt-1 text-base font-black text-foreground">{channel.label}</h4>
-                      <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{channel.subtitle}</p>
-                    </div>
-                    <div className={`shrink-0 rounded-full border px-3 py-1 text-[9px] font-black uppercase tracking-widest ${channel.badgeTone}`}>
-                      {channel.badge}
-                    </div>
-                  </div>
-
-                  <div className="mt-4 inline-flex items-center rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.3em] text-foreground/80 transition group-hover:border-primary/25 group-hover:text-foreground">
-                    {channel.action}
-                  </div>
-                </button>
-              ))}
-            </div>
+            <IcuCallControlPanel />
           </motion.section>
         </aside>
       </main>
