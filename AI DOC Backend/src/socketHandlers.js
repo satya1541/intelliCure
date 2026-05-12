@@ -8,6 +8,40 @@ const {
 } = require("./socketRegistry");
 const { createWherebyRoom } = require("./whereby");
 
+const latestVitalsByPair = new Map();
+
+function makeVitalsKey(wardId, doctorId) {
+  return `${wardId}:${doctorId}`;
+}
+
+function storeVitalsSnapshot(payload) {
+  const { wardId, doctorId, vitals, patient, updatedAt, source } = payload || {};
+
+  if (!wardId || !doctorId || !vitals) {
+    return null;
+  }
+
+  const snapshot = {
+    wardId,
+    doctorId,
+    vitals,
+    patient,
+    updatedAt: typeof updatedAt === "number" ? updatedAt : Date.now(),
+    source: source || "intelli-icu",
+  };
+
+  latestVitalsByPair.set(makeVitalsKey(wardId, doctorId), snapshot);
+  return snapshot;
+}
+
+function getVitalsSnapshot(wardId, doctorId) {
+  if (!wardId || !doctorId) {
+    return null;
+  }
+
+  return latestVitalsByPair.get(makeVitalsKey(wardId, doctorId)) || null;
+}
+
 function isValidRoleId(role, id) {
   return Boolean(role && id && allowedRoles.has(role) && allowedIds[role].has(id));
 }
@@ -104,10 +138,15 @@ function registerSocketHandlers(io) {
 
       try {
         const room = await createWherebyRoom({ wardId, doctorId });
+        const latestVitals = getVitalsSnapshot(wardId, doctorId);
         const roomPayload = {
           ...room,
           toRole,
           toId,
+          vitals: latestVitals?.vitals || null,
+          patient: latestVitals?.patient || null,
+          updatedAt: latestVitals?.updatedAt || null,
+          source: latestVitals?.source || null,
         };
 
         io.to(targetSocketId).emit("call:room", roomPayload);
@@ -124,6 +163,24 @@ function registerSocketHandlers(io) {
           toId,
         });
       }
+    });
+
+    socket.on("icu:vitals:update", (payload) => {
+      logEvent("icu:vitals:update", payload);
+
+      const snapshot = storeVitalsSnapshot(payload);
+
+      if (!snapshot) {
+        return;
+      }
+
+      const targetSocketId = getSocketId("doctor", snapshot.doctorId);
+
+      if (!targetSocketId) {
+        return;
+      }
+
+      io.to(targetSocketId).emit("icu:vitals:update", snapshot);
     });
 
     socket.on("call:reject", (payload) => {

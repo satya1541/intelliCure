@@ -673,7 +673,7 @@ export default function ConsultationHub() {
                       src={activeRoom.joinUrl}
                       title="Whereby consultation room"
                       className="h-[470px] w-full"
-                      allow="camera; microphone; fullscreen; speaker; autoplay"
+                      allow="camera; microphone; fullscreen; autoplay"
                       allowFullScreen
                     />
                   </div>

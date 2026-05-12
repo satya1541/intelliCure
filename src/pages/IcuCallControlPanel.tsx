@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react"
 import { Loader2 } from "lucide-react"
 import { connectSocket } from "@/lib/consultationSocket"
+import type { IcuPatientContext, IcuVitalsBroadcast, LiveVitalsSnapshot } from "./liveVitals"
 import { defaultDoctorId, defaultWardId, doctorById, doctors, wardById, wards } from "./consultation/shared"
 
 type ConsultationRole = "doctor" | "ward"
@@ -26,11 +27,16 @@ const currentRole: ConsultationRole = "ward"
 const currentId = defaultWardId
 const wardTargets = wards.filter((ward) => ward.id !== currentId)
 
+type IcuCallControlPanelProps = {
+  liveVitals?: LiveVitalsSnapshot
+  patientContext?: IcuPatientContext
+}
+
 function getContactName(role: ConsultationRole, peerId: string) {
   return role === "doctor" ? doctorById[peerId] || peerId : wardById[peerId] || peerId
 }
 
-export default function IcuCallControlPanel() {
+export default function IcuCallControlPanel({ liveVitals, patientContext }: IcuCallControlPanelProps) {
   const [selectedDoctorId, setSelectedDoctorId] = useState(defaultDoctorId)
   const [selectedWardId, setSelectedWardId] = useState(wardTargets[0]?.id || defaultWardId)
   const [incomingCall, setIncomingCall] = useState<CallPacket | null>(null)
@@ -38,6 +44,7 @@ export default function IcuCallControlPanel() {
   const [connectingCall, setConnectingCall] = useState(false)
   const [roomDetails, setRoomDetails] = useState<(RoomPacket & { joinUrl: string }) | null>(null)
   const [roomTargetRole, setRoomTargetRole] = useState<ConsultationRole | null>(null)
+  const [activeDoctorCallId, setActiveDoctorCallId] = useState<string | null>(null)
   const [socketStatus, setSocketStatus] = useState("connecting")
   const [toast, setToast] = useState("")
   const [lastEvent, setLastEvent] = useState("Waiting")
@@ -50,6 +57,39 @@ export default function IcuCallControlPanel() {
   const selectedDoctorName = getContactName("doctor", selectedDoctorId)
   const selectedWardName = getContactName("ward", selectedWardId)
   const outgoingName = outgoingCall ? getContactName(outgoingCall.toRole, outgoingCall.toId) : ""
+
+  useEffect(() => {
+    if (!liveVitals || !activeDoctorCallId) {
+      return
+    }
+
+    const socket = connectSocket()
+    const broadcastPacket: IcuVitalsBroadcast = {
+      source: "intelli-icu",
+      wardId: currentId,
+      doctorId: activeDoctorCallId,
+      vitals: liveVitals,
+      patient: patientContext,
+      updatedAt: Date.now(),
+    }
+
+    socket.emit("icu:vitals:update", broadcastPacket)
+  }, [
+    activeDoctorCallId,
+    currentId,
+    liveVitals?.diastolic,
+    liveVitals?.heartRate,
+    liveVitals?.oxygen,
+    liveVitals?.respiratoryRate,
+    liveVitals?.systolic,
+    liveVitals?.temperature,
+    patientContext?.ambRegNo,
+    patientContext?.bed,
+    patientContext?.diagnosis,
+    patientContext?.patientAge,
+    patientContext?.patientName,
+    patientContext?.shift,
+  ])
 
   useEffect(() => {
     if (roomDetails?.joinUrl && roomTargetRole) {
@@ -119,6 +159,10 @@ export default function IcuCallControlPanel() {
       setIncomingCall(null)
       setOutgoingCall(null)
       setConnectingCall(false)
+      setRoomTargetRole(payload.fromRole === "doctor" ? "doctor" : "ward")
+      if (payload.doctorId) {
+        setActiveDoctorCallId(payload.doctorId)
+      }
       setRoomFrameKey((value) => value + 1)
       setToast("Room ready. Joining now...")
     }
@@ -127,6 +171,9 @@ export default function IcuCallControlPanel() {
       setOutgoingCall(null)
       setConnectingCall(false)
       setRoomDetails(null)
+      if (payload.fromRole === "doctor") {
+        setActiveDoctorCallId(null)
+      }
       setToast(`Call rejected by ${getContactName(payload.fromRole, payload.fromId)}`)
     }
 
@@ -135,6 +182,9 @@ export default function IcuCallControlPanel() {
       setIncomingCall(null)
       setConnectingCall(false)
       setRoomDetails(null)
+      if (payload.fromRole === "doctor") {
+        setActiveDoctorCallId(null)
+      }
       setToast(`Call cancelled by ${getContactName(payload.fromRole, payload.fromId)}`)
     }
 
@@ -143,6 +193,7 @@ export default function IcuCallControlPanel() {
       setIncomingCall(null)
       setConnectingCall(false)
       setRoomDetails(null)
+      setActiveDoctorCallId(null)
       setToast(payload?.message || "Target is offline")
     }
 
@@ -157,6 +208,7 @@ export default function IcuCallControlPanel() {
       setOutgoingCall(null)
       setConnectingCall(false)
       setRoomDetails(null)
+      setActiveDoctorCallId(null)
     }
 
     const handleAny = (event: string) => {
@@ -220,6 +272,7 @@ export default function IcuCallControlPanel() {
     setConnectingCall(false)
     setRoomDetails(null)
     setRoomTargetRole(targetRole)
+    setActiveDoctorCallId(targetRole === "doctor" ? targetId : null)
     socket.emit("call:request", packet)
   }
 
@@ -231,6 +284,9 @@ export default function IcuCallControlPanel() {
     const socket = connectSocket()
     socket.emit("call:cancel", outgoingCall)
     setOutgoingCall(null)
+    if (outgoingCall.toRole === "doctor") {
+      setActiveDoctorCallId(null)
+    }
   }
 
   const handleAccept = () => {
@@ -245,6 +301,10 @@ export default function IcuCallControlPanel() {
       toRole: incomingCall.fromRole,
       toId: incomingCall.fromId,
     })
+    setRoomTargetRole(incomingCall.fromRole)
+    if (incomingCall.fromRole === "doctor") {
+      setActiveDoctorCallId(incomingCall.fromId)
+    }
     setIncomingCall(null)
   }
 
@@ -269,6 +329,7 @@ export default function IcuCallControlPanel() {
     setConnectingCall(false)
     setOutgoingCall(null)
     setIncomingCall(null)
+    setActiveDoctorCallId(null)
     setToast("Session ended")
     window.location.reload()
   }
@@ -473,6 +534,11 @@ export default function IcuCallControlPanel() {
             >
               Call Doctor
             </button>
+            {activeDoctorCallId ? (
+              <p className="mt-2 text-[10px] font-semibold text-cyan-200">
+                Realtime vitals are being shared with {selectedDoctorName}.
+              </p>
+            ) : null}
             <p className="mt-2 text-[10px] text-muted-foreground">Current: {selectedDoctorName}</p>
 
             {/* Video inside Doctor card */}
@@ -485,7 +551,7 @@ export default function IcuCallControlPanel() {
                     style={{ minHeight: 280 }}
                     title="Doctor Video Call"
                     src={roomDetails.joinUrl}
-                    allow="camera; microphone; fullscreen; speaker"
+                    allow="camera; microphone; fullscreen"
                     allowFullScreen
                   />
                 </div>
@@ -555,7 +621,7 @@ export default function IcuCallControlPanel() {
                     style={{ minHeight: 280 }}
                     title="Ward Video Call"
                     src={roomDetails.joinUrl}
-                    allow="camera; microphone; fullscreen; speaker"
+                    allow="camera; microphone; fullscreen"
                     allowFullScreen
                   />
                 </div>

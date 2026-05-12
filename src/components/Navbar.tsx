@@ -30,11 +30,16 @@ export default function Navbar() {
 
       {/* Right: Sign Up Button */}
       <div className="flex items-center justify-center md:justify-end gap-4 w-full md:w-auto">
-        <Link to="/signup">
-          <Button variant="heroSecondary" size="sm" className="rounded-full px-4 py-2 w-full md:w-auto">
-            Sign Up
-          </Button>
-        </Link>
+        <Button
+          type="button"
+          variant="heroSecondary"
+          size="sm"
+          disabled
+          aria-disabled="true"
+          className="w-full rounded-full px-4 py-2 md:w-auto !cursor-default !opacity-100"
+        >
+          Sign Up
+        </Button>
       </div>
     </nav>
   )

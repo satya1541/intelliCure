@@ -395,6 +395,78 @@
   border: none;
 }
 
+.consultation-root .live-vitals-card {
+  display: grid;
+  gap: 16px;
+  margin-top: 4px;
+  padding: 18px;
+  border-radius: 18px;
+  border: 1px solid rgba(113, 201, 232, 0.24);
+  background: linear-gradient(135deg, rgba(14, 29, 40, 0.98), rgba(10, 18, 26, 0.98));
+}
+
+.consultation-root .live-vitals-card__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+.consultation-root .live-vitals-card__title {
+  margin: 4px 0 0;
+  font-size: 1.05rem;
+}
+
+.consultation-root .live-vitals-card__meta {
+  margin: 6px 0 0;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.consultation-root .live-vitals-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 12px;
+}
+
+.consultation-root .live-vitals-item {
+  padding: 14px;
+  border-radius: 16px;
+  border: 1px solid rgba(120, 150, 170, 0.16);
+  background: rgba(255, 255, 255, 0.04);
+  min-width: 0;
+}
+
+.consultation-root .live-vitals-item__label {
+  margin: 0 0 8px;
+  color: var(--muted);
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+}
+
+.consultation-root .live-vitals-item__value {
+  margin: 0;
+  font-size: 1.45rem;
+  line-height: 1.1;
+  font-weight: 700;
+}
+
+.consultation-root .live-vitals-item__unit {
+  margin-left: 6px;
+  color: var(--muted);
+  font-size: 0.75rem;
+}
+
+.consultation-root .live-vitals-empty {
+  padding: 18px;
+  border-radius: 16px;
+  border: 1px dashed rgba(120, 150, 170, 0.22);
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--muted);
+}
+
 .consultation-root .incoming-panel {
   display: grid;
   gap: 16px;
@@ -623,6 +695,11 @@
 .consultation-root .doctor-page .video-area,
 .consultation-root .ward-page .video-area {
   border-color: rgba(53, 185, 255, 0.2);
+}
+
+.consultation-root .doctor-page .live-vitals-card {
+  border-color: rgba(53, 185, 255, 0.28);
+  background: linear-gradient(135deg, rgba(12, 28, 40, 0.98), rgba(8, 18, 28, 0.98));
 }
 
 .consultation-root .ward-page .video-area {

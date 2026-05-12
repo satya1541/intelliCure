@@ -869,7 +869,7 @@ export default function IntelliICUPage() {
   }, [])
 
   useEffect(() => {
-    if (dataMode !== "dummy") {
+    if (dataMode !== "dummy" && hasLiveVitals) {
       return
     }
 
@@ -878,7 +878,7 @@ export default function IntelliICUPage() {
     }, 850)
 
     return () => window.clearInterval(intervalId)
-  }, [dataMode])
+  }, [dataMode, hasLiveVitals])
 
   useEffect(() => {
     setIsLiveFeedReady(false)
@@ -932,6 +932,7 @@ export default function IntelliICUPage() {
       : "Connecting live feed"
     : dummyContext.liveMonitoringLabel
   const clinicalReadoutLabel = isRealMode ? (hasLiveVitals ? (ecgSeverity === "critical" ? "Spike pattern detected" : ecgSeverity === "watch" ? "Irregularity under review" : "Sinus rhythm stable") : hasActiveWaveforms ? "Lead packets streaming" : "Awaiting live stream") : dummyContext.clinicalReadoutLabel
+  const consultationVitals = hasLiveVitals ? vitals : dummyVitals
 
   return (
     <div className="relative min-h-screen overflow-hidden bg-background text-foreground">
@@ -1114,7 +1115,17 @@ export default function IntelliICUPage() {
             transition={{ duration: 0.45, delay: 0.05 }}
             className="glass-card relative overflow-hidden rounded-[2rem] border border-white/8 bg-white/[0.03] p-4 shadow-[0_24px_80px_rgba(0,0,0,0.26)]"
           >
-            <IcuCallControlPanel />
+            <IcuCallControlPanel
+              liveVitals={consultationVitals}
+              patientContext={{
+                patientName: routeContext.patientName,
+                patientAge: routeContext.patientAge,
+                bed: routeContext.bed,
+                shift: routeContext.shift,
+                diagnosis: routeContext.diagnosis,
+                ambRegNo: routeContext.ambRegNo,
+              }}
+            />
           </motion.section>
         </aside>
       </main>
