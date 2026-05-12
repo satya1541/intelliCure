@@ -7,7 +7,7 @@ import IcuCallControlPanel from "./IcuCallControlPanel"
 const ECG_PATTERN = [0, 0, 0, 0.35, -0.45, 0.1, 0.2, -0.7, 0.5, 0, 1.2, -2.6, 7.8, -9.8, 4.2, 0.1, 0, 0, 0.15, 0, 0, 0]
 
 const DEFAULT_WAVEFORM_LENGTH = 96
-const LIVE_ICU_STREAM_URL = "http://98.130.96.220:3000/"
+const LIVE_ICU_STREAM_URL = "https://vid.clinohealthinnovation.com/"
 
 type WaveformDefinition = {
   key: string
