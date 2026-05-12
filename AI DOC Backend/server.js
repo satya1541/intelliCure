@@ -6,12 +6,10 @@ const { Server } = require("socket.io");
 const cors = require("cors");
 
 const { ALLOWED_ORIGINS, PORT } = require("./src/config");
-const { proxyIcuCameraFeed } = require("./src/icuCameraFeed");
 const { registerSocketHandlers } = require("./src/socketHandlers");
 
 const app = express();
 app.use(cors({ origin: ALLOWED_ORIGINS }));
-app.use("/icu-stream", proxyIcuCameraFeed);
 app.use(express.json());
 
 const server = http.createServer(app);
