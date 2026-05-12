@@ -20,10 +20,10 @@ export default defineConfig({
         changeOrigin: true,
         ws: true,
       },
-      '/hls': {
-        target: 'http://13.48.231.221:8080',
+      '/icu-stream': {
+        target: 'http://98.130.96.220:3000',
         changeOrigin: true,
-        secure: false,
+        rewrite: (proxyPath) => proxyPath.replace(/^\/icu-stream/, '') || '/',
       },
     },
   },
