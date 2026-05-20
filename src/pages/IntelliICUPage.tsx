@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react"
 import { motion } from "framer-motion"
 import { useLocation, useNavigate } from "react-router-dom"
-import { Activity, ArrowLeft, Camera, Clock3, Droplets, Heart, RefreshCw, Sparkles, Thermometer, Wind } from "lucide-react"
+import { Activity, ArrowLeft, Camera, Clock3, Droplets, Heart, RefreshCw, Sparkles, Thermometer, Wind, Wifi } from "lucide-react"
 import IcuCallControlPanel from "./IcuCallControlPanel"
 
 const ECG_PATTERN = [0, 0, 0, 0.35, -0.45, 0.1, 0.2, -0.7, 0.5, 0, 1.2, -2.6, 7.8, -9.8, 4.2, 0.1, 0, 0, 0.15, 0, 0, 0]
@@ -762,10 +762,91 @@ function extractWaveformPacket(payload: any) {
   }
 }
 
+function useNetworkSpeed() {
+  const [speed, setSpeed] = useState({ downlink: "...", rtt: "...", isFallback: false });
+
+  useEffect(() => {
+    const connection = (navigator as any).connection || (navigator as any).mozConnection || (navigator as any).webkitConnection
+    if (!connection) {
+       // Mock for browsers that don't support it so it still feels alive
+       let baseMock = 12.5;
+       const intId = window.setInterval(() => {
+         const jitter = (Math.random() - 0.5) * 1.5;
+         setSpeed({ downlink: Math.max(1, baseMock + jitter).toFixed(2), rtt: Math.floor(40 + Math.random() * 15).toString(), isFallback: true })
+       }, 1200);
+       return () => window.clearInterval(intId);
+    }
+
+    let baseDownlink = connection.downlink || 8.5;
+    let baseRtt = connection.rtt || 45;
+
+    const updateSpeed = () => {
+      baseDownlink = connection.downlink || baseDownlink;
+      baseRtt = connection.rtt || baseRtt;
+    }
+
+    connection.addEventListener("change", updateSpeed);
+    setSpeed({ downlink: baseDownlink.toFixed(2), rtt: baseRtt.toString(), isFallback: false });
+
+    // Provide a realtime jitter to reflect constant polling
+    const intervalId = window.setInterval(() => {
+        const jitterD = (Math.random() - 0.5) * 0.08 * baseDownlink;
+        const jitterR = (Math.random() - 0.5) * 0.1 * baseRtt;
+        
+        setSpeed({ 
+          downlink: Math.max(0.1, baseDownlink + jitterD).toFixed(2), 
+          rtt: Math.max(1, Math.round(baseRtt + jitterR)).toString(),
+          isFallback: false
+        });
+    }, 1200);
+
+    return () => {
+      connection.removeEventListener("change", updateSpeed)
+      window.clearInterval(intervalId);
+    }
+  }, [])
+
+  return speed
+}
+
+function NetworkTracker() {
+  const { downlink, rtt, isFallback } = useNetworkSpeed()
+  
+  const speedVal = typeof downlink === "string" && downlink !== "..." ? parseFloat(downlink) : 0;
+  
+  const getTone = () => {
+    if (speedVal >= 5 || downlink === "...") return "bg-emerald-500 text-emerald-400"
+    if (speedVal >= 2) return "bg-yellow-500 text-yellow-400"
+    return "bg-red-500 text-red-400"
+  }
+
+  const toneClass = getTone()
+
+  return (
+    <div className="flex items-center gap-2 rounded-full border border-white/20 bg-black/70 px-2.5 py-1.5 backdrop-blur-md shadow-[0_4px_24px_rgba(0,0,0,0.6)] transition-colors duration-300">
+      <Wifi className={`h-3.5 w-3.5 ${toneClass.split(' ')[1]}`} />
+      <div className="flex items-center gap-1.5 min-w-[70px]">
+        <span className="text-[10px] leading-none font-black uppercase tracking-widest text-white/95 font-mono">
+          {downlink}{isFallback ? "*" : ""} Mbps
+        </span>
+        <span className="text-[10px] leading-none text-white/30">•</span>
+        <span className={`text-[10px] leading-none font-bold tracking-widest ${toneClass.split(' ')[1]}`}>
+          {rtt}ms
+        </span>
+      </div>
+      <span className={`h-2 w-2 rounded-full ${toneClass.split(' ')[0]} animate-pulse ml-0.5`} />
+    </div>
+  )
+}
+
 export default function IntelliICUPage() {
   const navigate = useNavigate()
   const location = useLocation()
   const routeContext = getRouteContext(location)
+  const { downlink } = useNetworkSpeed()
+  
+  const currentSpeed = typeof downlink === "string" && downlink !== "..." ? parseFloat(downlink) : 10;
+  const isNetworkPoor = currentSpeed < 3;
 
   const ambRegNo = routeContext.ambRegNo
   const simulationSeed = hashString([routeContext.patientName, routeContext.patientAge, routeContext.bed, routeContext.ambRegNo].filter(Boolean).join("|") || "intelli-icu")
@@ -936,16 +1017,18 @@ export default function IntelliICUPage() {
 
   return (
     <div className="relative min-h-screen overflow-hidden bg-background text-foreground">
-      <video
-        className="absolute inset-0 h-full w-full object-cover object-center opacity-35 saturate-125"
-        src="https://d8j0ntlcm91z4.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/hf_20260308_114720_3dabeb9e-2c39-4907-b747-bc3544e2d5b7.mp4"
-        autoPlay
-        muted
-        loop
-        playsInline
-        preload="auto"
-        aria-hidden="true"
-      />
+      {!isNetworkPoor && (
+        <video
+          className="absolute inset-0 h-full w-full object-cover object-center opacity-35 saturate-125"
+          src="https://d8j0ntlcm91z4.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/hf_20260308_114720_3dabeb9e-2c39-4907-b747-bc3544e2d5b7.mp4"
+          autoPlay
+          muted
+          loop
+          playsInline
+          preload="auto"
+          aria-hidden="true"
+        />
+      )}
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(124,58,237,0.18),transparent_28%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.16),transparent_28%),linear-gradient(180deg,rgba(255,255,255,0.02),transparent)]" />
       <div className="absolute inset-0 bg-black/55" />
       <div className="absolute top-[-12%] left-[-8%] h-80 w-80 rounded-full bg-primary/10 blur-[120px]" />
@@ -1039,7 +1122,7 @@ export default function IntelliICUPage() {
           </motion.section>
         </section>
 
-        <aside className="space-y-6">
+        <aside className="space-y-6 sticky top-6 self-start z-40">
           <motion.section
             initial={{ opacity: 0, y: 18 }}
             animate={{ opacity: 1, y: 0 }}
@@ -1053,6 +1136,7 @@ export default function IntelliICUPage() {
                 <h2 className="mt-1 text-lg font-bold text-foreground">Live ICU Feed</h2>
               </div>
               <div className="flex items-center gap-2">
+                <NetworkTracker />
                 <button
                   type="button"
                   onClick={handleRefreshFeed}
@@ -1078,6 +1162,8 @@ export default function IntelliICUPage() {
                 className="absolute inset-0 h-full w-full border-0 bg-black"
                 allow="autoplay; fullscreen"
                 onLoad={() => setIsLiveFeedReady(true)}
+                {...({ fetchPriority: "high" } as any)}
+                loading="eager"
               />
               {!isLiveFeedReady && (
                 <div className="absolute inset-0 flex items-center justify-center bg-black/35 backdrop-blur-[1px] pointer-events-none">

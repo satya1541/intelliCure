@@ -5,7 +5,12 @@ const SOCKET_URL = (import.meta.env.VITE_CONSULTATION_SOCKET_URL as string | und
 export const consultationSocket = io(SOCKET_URL, {
   path: "/socket.io",
   autoConnect: false,
-  transports: ["websocket", "polling"],
+  // Force websocket immediately rather than polling first to reduce overhead
+  transports: ["websocket"],
+  // Allow perMessageDeflate compression for smaller payloads
+  perMessageDeflate: {
+    threshold: 1024, 
+  } as any,
 })
 
 export const connectSocket = () => {
