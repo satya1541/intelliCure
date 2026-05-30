@@ -1,13 +1,13 @@
 import { useEffect, useState } from "react"
 import { motion } from "framer-motion"
 import { useLocation, useNavigate } from "react-router-dom"
-import { Activity, ArrowLeft, Camera, Clock3, Droplets, Heart, RefreshCw, Sparkles, Thermometer, Wind, Wifi } from "lucide-react"
+import { Activity, ArrowLeft, Camera, Clock3, Droplets, Heart, RefreshCw, Sparkles, Thermometer, Wind, Wifi, TriangleAlert } from "lucide-react"
 import IcuCallControlPanel from "./IcuCallControlPanel"
 
 const ECG_PATTERN = [0, 0, 0, 0.35, -0.45, 0.1, 0.2, -0.7, 0.5, 0, 1.2, -2.6, 7.8, -9.8, 4.2, 0.1, 0, 0, 0.15, 0, 0, 0]
 
 const DEFAULT_WAVEFORM_LENGTH = 96
-const LIVE_ICU_STREAM_URL = "https://vid.clinohealthinnovation.com/"
+const LIVE_ICU_STREAM_URL = "https://vid1.clinohealthinnovation.com/pi-patient-01"
 
 type WaveformDefinition = {
   key: string
@@ -839,6 +839,70 @@ function NetworkTracker() {
   )
 }
 
+function BrowserWarningModal() {
+  const [showWarning, setShowWarning] = useState(false)
+
+  useEffect(() => {
+    const hasSeenWarning = localStorage.getItem("intelli-icu-browser-warning")
+    if (hasSeenWarning) return
+
+    const isFirefox = navigator.userAgent.toLowerCase().includes("firefox")
+    const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent)
+    
+    const checkBrave = async () => {
+      if ((navigator as any).brave && typeof (navigator as any).brave.isBrave === "function") {
+        return await (navigator as any).brave.isBrave()
+      }
+      return false
+    }
+
+    checkBrave().then((isBrave) => {
+      if (isFirefox || isSafari || isBrave) {
+        setShowWarning(true)
+      }
+    })
+  }, [])
+
+  const handleDismiss = () => {
+    localStorage.setItem("intelli-icu-browser-warning", "true")
+    setShowWarning(false)
+  }
+
+  if (!showWarning) return null
+
+  return (
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+      <motion.div 
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        className="w-full max-w-md rounded-2xl border border-yellow-500/30 bg-[#0a0a0a] p-6 shadow-2xl"
+      >
+        <div className="flex items-start gap-4">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-yellow-500/10 text-yellow-500">
+            <TriangleAlert className="h-5 w-5" />
+          </div>
+          <div>
+            <h3 className="text-lg font-semibold text-white">Browser Compatibility</h3>
+            <p className="mt-2 text-sm leading-relaxed text-white/70">
+              For optimal performance and accurate real-time telemetry, we strongly recommend using <strong>Google Chrome</strong> or <strong>Microsoft Edge</strong>. 
+              <br /><br />
+              Features like advanced network bandwidth tracking may be restricted or blocked by privacy shields in Brave, Firefox, or Safari.
+            </p>
+            <div className="mt-6 flex justify-end">
+              <button
+                onClick={handleDismiss}
+                className="rounded-full bg-white/10 px-5 py-2 text-sm font-medium text-white transition-colors hover:bg-white/20 active:bg-white/30"
+              >
+                I understand, continue
+              </button>
+            </div>
+          </div>
+        </div>
+      </motion.div>
+    </div>
+  )
+}
+
 export default function IntelliICUPage() {
   const navigate = useNavigate()
   const location = useLocation()
@@ -1017,6 +1081,7 @@ export default function IntelliICUPage() {
 
   return (
     <div className="relative min-h-screen overflow-hidden bg-background text-foreground">
+      <BrowserWarningModal />
       {!isNetworkPoor && (
         <video
           className="absolute inset-0 h-full w-full object-cover object-center opacity-35 saturate-125"
