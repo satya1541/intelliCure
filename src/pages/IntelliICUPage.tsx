@@ -7,7 +7,10 @@ import IcuCallControlPanel from "./IcuCallControlPanel"
 const ECG_PATTERN = [0, 0, 0, 0.35, -0.45, 0.1, 0.2, -0.7, 0.5, 0, 1.2, -2.6, 7.8, -9.8, 4.2, 0.1, 0, 0, 0.15, 0, 0, 0]
 
 const DEFAULT_WAVEFORM_LENGTH = 96
-const LIVE_ICU_STREAM_URL = "https://vid1.clinohealthinnovation.com/pi-patient-01"
+const ROOMS = [
+  { id: "room-1", name: "Room 1", url: "https://vid1.clinohealthinnovation.com/pi-patient-01" },
+  { id: "room-2", name: "Room 2", url: "https://vid1.clinohealthinnovation.com/pi-patient-02" },
+]
 
 type WaveformDefinition = {
   key: string
@@ -28,7 +31,7 @@ const WAVEFORM_DEFINITIONS: WaveformDefinition[] = [
   { key: "RESP", label: "RESP", subtitle: "Respiratory trace", tone: "text-lime-300", kind: "resp" },
   { key: "SPO2_PLETH", label: "SpO2 Pleth", subtitle: "Pulse pleth", tone: "text-rose-300", kind: "pleth" },
   { key: "ECG_V", label: "ECG V", subtitle: "Precordial lead", tone: "text-teal-300", kind: "ecg" },
-] 
+]
 
 type DataMode = "real" | "dummy"
 
@@ -768,13 +771,13 @@ function useNetworkSpeed() {
   useEffect(() => {
     const connection = (navigator as any).connection || (navigator as any).mozConnection || (navigator as any).webkitConnection
     if (!connection) {
-       // Mock for browsers that don't support it so it still feels alive
-       let baseMock = 12.5;
-       const intId = window.setInterval(() => {
-         const jitter = (Math.random() - 0.5) * 1.5;
-         setSpeed({ downlink: Math.max(1, baseMock + jitter).toFixed(2), rtt: Math.floor(40 + Math.random() * 15).toString(), isFallback: true })
-       }, 1200);
-       return () => window.clearInterval(intId);
+      // Mock for browsers that don't support it so it still feels alive
+      let baseMock = 12.5;
+      const intId = window.setInterval(() => {
+        const jitter = (Math.random() - 0.5) * 1.5;
+        setSpeed({ downlink: Math.max(1, baseMock + jitter).toFixed(2), rtt: Math.floor(40 + Math.random() * 15).toString(), isFallback: true })
+      }, 1200);
+      return () => window.clearInterval(intId);
     }
 
     let baseDownlink = connection.downlink || 8.5;
@@ -790,14 +793,14 @@ function useNetworkSpeed() {
 
     // Provide a realtime jitter to reflect constant polling
     const intervalId = window.setInterval(() => {
-        const jitterD = (Math.random() - 0.5) * 0.08 * baseDownlink;
-        const jitterR = (Math.random() - 0.5) * 0.1 * baseRtt;
-        
-        setSpeed({ 
-          downlink: Math.max(0.1, baseDownlink + jitterD).toFixed(2), 
-          rtt: Math.max(1, Math.round(baseRtt + jitterR)).toString(),
-          isFallback: false
-        });
+      const jitterD = (Math.random() - 0.5) * 0.08 * baseDownlink;
+      const jitterR = (Math.random() - 0.5) * 0.1 * baseRtt;
+
+      setSpeed({
+        downlink: Math.max(0.1, baseDownlink + jitterD).toFixed(2),
+        rtt: Math.max(1, Math.round(baseRtt + jitterR)).toString(),
+        isFallback: false
+      });
     }, 1200);
 
     return () => {
@@ -811,9 +814,9 @@ function useNetworkSpeed() {
 
 function NetworkTracker() {
   const { downlink, rtt, isFallback } = useNetworkSpeed()
-  
+
   const speedVal = typeof downlink === "string" && downlink !== "..." ? parseFloat(downlink) : 0;
-  
+
   const getTone = () => {
     if (speedVal >= 5 || downlink === "...") return "bg-emerald-500 text-emerald-400"
     if (speedVal >= 2) return "bg-yellow-500 text-yellow-400"
@@ -823,18 +826,18 @@ function NetworkTracker() {
   const toneClass = getTone()
 
   return (
-    <div className="flex items-center gap-2 rounded-full border border-white/20 bg-black/70 px-2.5 py-1.5 backdrop-blur-md shadow-[0_4px_24px_rgba(0,0,0,0.6)] transition-colors duration-300">
-      <Wifi className={`h-3.5 w-3.5 ${toneClass.split(' ')[1]}`} />
-      <div className="flex items-center gap-1.5 min-w-[70px]">
-        <span className="text-[10px] leading-none font-black uppercase tracking-widest text-white/95 font-mono">
+    <div className="flex items-center gap-1.5 rounded-full border border-white/20 bg-black/70 px-2 py-1 backdrop-blur-md shadow-[0_4px_24px_rgba(0,0,0,0.6)] transition-colors duration-300">
+      <Wifi className={`h-3 w-3 ${toneClass.split(' ')[1]}`} />
+      <div className="flex items-center gap-1 min-w-[62px]">
+        <span className="text-[9px] leading-none font-black uppercase tracking-widest text-white/95 font-mono">
           {downlink}{isFallback ? "*" : ""} Mbps
         </span>
-        <span className="text-[10px] leading-none text-white/30">•</span>
-        <span className={`text-[10px] leading-none font-bold tracking-widest ${toneClass.split(' ')[1]}`}>
+        <span className="text-[9px] leading-none text-white/30">•</span>
+        <span className={`text-[9px] leading-none font-bold tracking-widest ${toneClass.split(' ')[1]}`}>
           {rtt}ms
         </span>
       </div>
-      <span className={`h-2 w-2 rounded-full ${toneClass.split(' ')[0]} animate-pulse ml-0.5`} />
+      <span className={`h-1.5 w-1.5 rounded-full ${toneClass.split(' ')[0]} animate-pulse ml-0.5`} />
     </div>
   )
 }
@@ -848,7 +851,7 @@ function BrowserWarningModal() {
 
     const isFirefox = navigator.userAgent.toLowerCase().includes("firefox")
     const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent)
-    
+
     const checkBrave = async () => {
       if ((navigator as any).brave && typeof (navigator as any).brave.isBrave === "function") {
         return await (navigator as any).brave.isBrave()
@@ -872,7 +875,7 @@ function BrowserWarningModal() {
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-      <motion.div 
+      <motion.div
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
         className="w-full max-w-md rounded-2xl border border-yellow-500/30 bg-[#0a0a0a] p-6 shadow-2xl"
@@ -884,7 +887,7 @@ function BrowserWarningModal() {
           <div>
             <h3 className="text-lg font-semibold text-white">Browser Compatibility</h3>
             <p className="mt-2 text-sm leading-relaxed text-white/70">
-              For optimal performance and accurate real-time telemetry, we strongly recommend using <strong>Google Chrome</strong> or <strong>Microsoft Edge</strong>. 
+              For optimal performance and accurate real-time telemetry, we strongly recommend using <strong>Google Chrome</strong> or <strong>Microsoft Edge</strong>.
               <br /><br />
               Features like advanced network bandwidth tracking may be restricted or blocked by privacy shields in Brave, Firefox, or Safari.
             </p>
@@ -908,7 +911,7 @@ export default function IntelliICUPage() {
   const location = useLocation()
   const routeContext = getRouteContext(location)
   const { downlink } = useNetworkSpeed()
-  
+
   const currentSpeed = typeof downlink === "string" && downlink !== "..." ? parseFloat(downlink) : 10;
   const isNetworkPoor = currentSpeed < 3;
 
@@ -935,6 +938,12 @@ export default function IntelliICUPage() {
   const [dummyFrame, setDummyFrame] = useState(0)
   const [isLiveFeedReady, setIsLiveFeedReady] = useState(false)
   const [streamReloadVersion, setStreamReloadVersion] = useState(0)
+  const [selectedRoom, setSelectedRoom] = useState(ROOMS[0])
+
+  const handleRoomChange = (room: typeof ROOMS[0]) => {
+    setIsLiveFeedReady(false)
+    setSelectedRoom(room)
+  }
 
   useEffect(() => {
     let ws: WebSocket | undefined
@@ -943,7 +952,7 @@ export default function IntelliICUPage() {
 
     const connect = () => {
       ws = new WebSocket("wss://vital.smartambulance.in/")
-      
+
       ws.onopen = () => {
         console.log("WebSocket connected")
 
@@ -1195,34 +1204,54 @@ export default function IntelliICUPage() {
             className="glass-card relative overflow-hidden rounded-[2rem] border border-white/8 bg-black/40 shadow-[0_24px_80px_rgba(0,0,0,0.35)]"
           >
             <div className="absolute inset-0 bg-gradient-to-br from-primary/10 via-transparent to-cyan-400/10 pointer-events-none" />
-            <div className="relative z-10 flex items-center justify-between gap-4 border-b border-white/5 px-5 py-4">
-              <div>
-                <p className="text-[10px] font-black uppercase tracking-[0.35em] text-muted-foreground">Patient Camera</p>
-                <h2 className="mt-1 text-lg font-bold text-foreground">Live ICU Feed</h2>
+            <div className="relative z-10 flex flex-col gap-3.5 border-b border-white/5 px-5 py-4">
+              <div className="flex items-center justify-between gap-4">
+                <div>
+                  <p className="text-[10px] font-black uppercase tracking-[0.35em] text-muted-foreground">Patient Camera</p>
+                  <h2 className="mt-1 text-lg font-bold text-foreground">Live ICU Feed</h2>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <NetworkTracker />
+                  <button
+                    type="button"
+                    onClick={handleRefreshFeed}
+                    className="inline-flex items-center gap-1 rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-[9px] font-black uppercase tracking-widest text-white/85 transition hover:bg-white/10"
+                    title="Reload camera feed"
+                    aria-label="Reload camera feed"
+                  >
+                    <RefreshCw className="h-3 w-3" />
+                    Refresh
+                  </button>
+                  <div className="flex items-center gap-1.5 rounded-full border border-danger/25 bg-danger/10 px-2.5 py-1 text-[9px] font-black uppercase tracking-widest text-danger">
+                    <span className="h-1.5 w-1.5 rounded-full bg-danger animate-pulse" />
+                    Live stream
+                  </div>
+                </div>
               </div>
-              <div className="flex items-center gap-2">
-                <NetworkTracker />
-                <button
-                  type="button"
-                  onClick={handleRefreshFeed}
-                  className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-[10px] font-black uppercase tracking-widest text-white/85 transition hover:bg-white/10"
-                  title="Reload camera feed"
-                  aria-label="Reload camera feed"
-                >
-                  <RefreshCw className="h-3.5 w-3.5" />
-                  Refresh
-                </button>
-                <div className="flex items-center gap-2 rounded-full border border-danger/25 bg-danger/10 px-3 py-1 text-[10px] font-black uppercase tracking-widest text-danger">
-                  <span className="h-2 w-2 rounded-full bg-danger animate-pulse" />
-                  Live stream
+
+              <div className="flex items-center">
+                <div className="inline-flex items-center rounded-full border border-white/10 bg-white/5 p-0.5 text-[9px] font-black uppercase tracking-[0.2em] text-muted-foreground">
+                  {ROOMS.map((room) => (
+                    <button
+                      key={room.id}
+                      type="button"
+                      onClick={() => handleRoomChange(room)}
+                      className={`rounded-full px-2.5 py-1 transition ${selectedRoom.id === room.id
+                        ? "bg-cyan-500 text-black font-extrabold shadow-[0_0_12px_rgba(6,182,212,0.3)]"
+                        : "hover:text-foreground text-white/60"
+                        }`}
+                    >
+                      {room.name}
+                    </button>
+                  ))}
                 </div>
               </div>
             </div>
 
             <div className="relative aspect-[16/10] overflow-hidden bg-black">
               <iframe
-                key={streamReloadVersion}
-                src={LIVE_ICU_STREAM_URL}
+                key={`${selectedRoom.id}-${streamReloadVersion}`}
+                src={selectedRoom.url}
                 title="Live ICU Camera Feed"
                 className="absolute inset-0 h-full w-full border-0 bg-black"
                 allow="autoplay; fullscreen"
@@ -1240,23 +1269,6 @@ export default function IntelliICUPage() {
               )}
               <div className="absolute inset-0 bg-gradient-to-t from-black/65 via-transparent to-black/15" />
               <div className="absolute inset-0 bg-[linear-gradient(transparent_0%,rgba(255,255,255,0.04)_50%,transparent_100%)] bg-[length:100%_7px] opacity-40 pointer-events-none" />
-
-              <div className="absolute left-4 top-4 flex items-center gap-2 rounded-full border border-white/10 bg-black/50 px-3 py-1.5 text-[10px] font-black uppercase tracking-widest text-white/90 backdrop-blur-md">
-                <Camera className="h-3.5 w-3.5 text-cyan-300" /> ICU Camera
-              </div>
-              <div className="absolute right-4 top-4 rounded-full border border-white/10 bg-black/50 px-3 py-1.5 text-[10px] font-black uppercase tracking-widest text-white/80 backdrop-blur-md">
-                {cameraBedLabel}
-              </div>
-
-              <div className="absolute bottom-4 left-4 rounded-2xl border border-white/10 bg-black/55 px-4 py-3 backdrop-blur-md">
-                <p className="text-[9px] font-black uppercase tracking-[0.35em] text-muted-foreground">Live monitoring</p>
-                <p className="mt-1 text-sm font-semibold text-foreground">{liveMonitoringLabel}</p>
-              </div>
-
-              <div className="absolute bottom-4 right-4 rounded-2xl border border-white/10 bg-black/55 px-4 py-3 backdrop-blur-md">
-                <p className="text-[9px] font-black uppercase tracking-[0.35em] text-muted-foreground">Risk lane</p>
-                <p className={`mt-1 text-sm font-semibold ${statusTone}`}>{statusLabel}</p>
-              </div>
             </div>
           </motion.section>
 
