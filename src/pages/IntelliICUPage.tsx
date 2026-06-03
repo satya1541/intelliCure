@@ -90,6 +90,8 @@ type IncomingVital = {
   parameterName?: string
   value?: number
   unit?: string
+  moduleId?: number
+  moduleName?: string
 }
 
 type WaveformPacket = {
@@ -747,7 +749,32 @@ function extractVitalsUpdate(payload: any): (Partial<LiveVitalsState> & { patien
 
     const spo2 = readParamValue([251, "SpO2", "SPO2", "Oxygen", "oxygen", "oxygenSaturation"])
     const heartRate = readParamValue([201, "HR", "Heart Rate", "heartRate", "heart_rate", "heartbeat", "heartBeat"])
-    const respiratoryRate = readParamValue([258, "RR", "Respiratory Rate (SpO2)", "respiratoryRate", "respiratory_rate", "respRate", "resp_rate", 401])
+    // Respiratory Rate can come from RESP module (parameterId 401) or SPO2 module (parameterId 258)
+    // Prefer RESP module value if valid, fall back to SPO2 module value
+    const rrFromResp = readings.find((entry) => {
+      const idMatch = isSameVitalIdentifier(entry, 401) || (isSameVitalIdentifier(entry, "RR") && String(entry.moduleName ?? "").toUpperCase() === "RESP")
+      return idMatch
+    })
+    const rrFromSpo2 = readings.find((entry) => {
+      const idMatch = isSameVitalIdentifier(entry, 258) || (isSameVitalIdentifier(entry, "RR") && String(entry.moduleName ?? "").toUpperCase() === "SPO2")
+      return idMatch
+    })
+    const rrRespVal = coerceVitalNumber(rrFromResp?.value)
+    const rrSpo2Val = coerceVitalNumber(rrFromSpo2?.value)
+    // Debug: trace respiratory rate extraction
+    console.log("[RR Debug]", {
+      rrFromResp: rrFromResp ? { parameterId: rrFromResp.parameterId, parameterName: rrFromResp.parameterName, moduleName: rrFromResp.moduleName, value: rrFromResp.value } : null,
+      rrFromSpo2: rrFromSpo2 ? { parameterId: rrFromSpo2.parameterId, parameterName: rrFromSpo2.parameterName, moduleName: rrFromSpo2.moduleName, value: rrFromSpo2.value } : null,
+      rrRespVal,
+      rrSpo2Val,
+    })
+    // Use RESP module value if valid (>0, not -1), else fall back to SPO2 module value
+    const respiratoryRate = (typeof rrRespVal === "number" && rrRespVal > 0 && rrRespVal !== -1)
+      ? rrRespVal
+      : (typeof rrSpo2Val === "number" && rrSpo2Val > 0 && rrSpo2Val !== -1)
+        ? rrSpo2Val
+        : readParamValue(["RR", "respiratoryRate", "respiratory_rate", "respRate", "resp_rate"])
+    console.log("[RR Debug] Final respiratoryRate:", respiratoryRate)
     const temperature = readParamValue([1051, 1052, "T1", "T2", "Temperature", "temperature"])
     const systolic = readParamValue([351, "NIBP-S", "Systolic", "systolic"])
     const diastolic = readParamValue([352, "NIBP-D", "Diastolic", "diastolic"])
@@ -1120,6 +1147,7 @@ export default function IntelliICUPage() {
           const vitalsUpdate = extractVitalsUpdate(parsed)
           if (vitalsUpdate) {
             const mrn = vitalsUpdate.patientMrn || selectedPatientMrn
+            console.log("[Vitals Store Debug]", { mrn, respiratoryRate: vitalsUpdate.respiratoryRate, update: vitalsUpdate })
             setHasLiveVitals(true)
             setPatientsVitals((prev) => ({
               ...prev,
