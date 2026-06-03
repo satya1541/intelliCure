@@ -33,7 +33,12 @@ type IcuCallControlPanelProps = {
 }
 
 function getContactName(role: ConsultationRole, peerId: string) {
-  return role === "doctor" ? doctorById[peerId] || peerId : wardById[peerId] || peerId
+  if (role === "doctor") {
+    const doc = doctors.find((d) => d.id === peerId)
+    return doc ? doc.name : peerId
+  }
+  const wrd = wards.find((w) => w.id === peerId)
+  return wrd ? wrd.name : peerId
 }
 
 export default function IcuCallControlPanel({ liveVitals, patientContext }: IcuCallControlPanelProps) {

@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react"
 import { motion } from "framer-motion"
 import { useLocation, useNavigate } from "react-router-dom"
-import { Activity, ArrowLeft, Camera, Clock3, Droplets, Heart, RefreshCw, Sparkles, Thermometer, Wind, Wifi, TriangleAlert } from "lucide-react"
+import { Activity, ArrowLeft, Camera, Clock3, Droplets, Heart, RefreshCw, Sparkles, Thermometer, Wind, Wifi, TriangleAlert, Percent, ShieldAlert, Brain, Zap, HeartOff } from "lucide-react"
 import IcuCallControlPanel from "./IcuCallControlPanel"
 
 const ECG_PATTERN = [0, 0, 0, 0.35, -0.45, 0.1, 0.2, -0.7, 0.5, 0, 1.2, -2.6, 7.8, -9.8, 4.2, 0.1, 0, 0, 0.15, 0, 0, 0]
@@ -10,6 +10,21 @@ const DEFAULT_WAVEFORM_LENGTH = 96
 const ROOMS = [
   { id: "room-1", name: "Room 1", url: "https://vid1.clinohealthinnovation.com/pi-patient-01" },
   { id: "room-2", name: "Room 2", url: "https://vid1.clinohealthinnovation.com/pi-patient-02" },
+]
+
+function formatPatientName(name: string): string {
+  if (!name) return ""
+  const upper = name.trim().toUpperCase()
+  if (upper === "MISHRA ROHIT" || upper === "ROHIT MISHRA") return "ROHIT MISHRA"
+  if (upper === "PANDA RAHUL" || upper === "RAHUL PANDA") return "RAHUL PANDA"
+  if (upper === "DAS RANJAN" || upper === "RANJAN DAS") return "RANJAN DAS"
+  return name
+}
+
+const PATIENTS = [
+  { mrn: "PT001", name: "ROHIT MISHRA", age: "42", bed: "Bed 04", shift: "Post-round review" },
+  { mrn: "PT002", name: "RAHUL PANDA", age: "35", bed: "Bed 07", shift: "Active watch" },
+  { mrn: "PT003", name: "RANJAN DAS", age: "58", bed: "Bed 11", shift: "Step-down review" },
 ]
 
 type WaveformDefinition = {
@@ -55,6 +70,19 @@ type LiveVitalsState = {
   temperature: number
   systolic: number
   diastolic: number
+  pi?: number
+  pr?: number
+  pvcs?: number
+  ews?: number
+  gcs?: number
+}
+
+type AlarmPacket = {
+  alarmType: string
+  alarmId: number
+  alarmText: string
+  alarmLevel: number
+  observationTime: string
 }
 
 type IncomingVital = {
@@ -119,7 +147,14 @@ function createFlatSeries(length = DEFAULT_WAVEFORM_LENGTH) {
 }
 
 function normalizeWaveformKey(name: string) {
-  return name.trim().replace(/\s+/g, "_").toUpperCase()
+  const normalized = name.trim().replace(/[\s_-]+/g, "_").toUpperCase()
+  if (normalized.includes("PLETH") || normalized.includes("SPO2")) {
+    return "SPO2_PLETH"
+  }
+  if (normalized.includes("RESP")) {
+    return "RESP"
+  }
+  return normalized
 }
 
 function hashString(value: string) {
@@ -209,6 +244,12 @@ function buildDummyVitals(frame: number, seed: number, patientAge?: string | num
   const systolic = clamp(110 + ageTilt * 0.42 + stress * 15 + layeredNoise(seed + 29, time * 0.41) * 7, 98, 142)
   const diastolic = clamp(68 + ageTilt * 0.22 + stress * 9 + layeredNoise(seed + 31, time * 0.44) * 4, 58, 96)
 
+  const pi = clamp(4.5 + (recovery - 0.5) * 1.5 + wobble * 0.5, 1.2, 9.8)
+  const pr = clamp(heartRate - 2 + wobble * 1.5, 50, 120)
+  const pvcs = stress > 0.85 ? Math.round(stress * 3) : 0
+  const ews = stress > 0.8 ? Math.round(stress * 4) : 0
+  const gcs = clamp(Math.round(15 - stress * 3), 3, 15)
+
   return {
     oxygen: Number(oxygen.toFixed(1)),
     heartRate: Math.round(heartRate),
@@ -216,6 +257,11 @@ function buildDummyVitals(frame: number, seed: number, patientAge?: string | num
     temperature: Number(temperature.toFixed(1)),
     systolic: Math.round(systolic),
     diastolic: Math.round(diastolic),
+    pi: Number(pi.toFixed(2)),
+    pr: Math.round(pr),
+    pvcs,
+    ews,
+    gcs,
   }
 }
 
@@ -678,9 +724,10 @@ function coerceVitalNumber(value: unknown) {
   return null
 }
 
-function extractVitalsUpdate(payload: any): Partial<LiveVitalsState> | null {
+function extractVitalsUpdate(payload: any): (Partial<LiveVitalsState> & { patientMrn?: string }) | null {
   const vitalsArray = payload?.data?.vitals || payload?.vitals
   const dashboardVitals = payload?.data?.dashboardVitals || payload?.dashboardVitals
+  const patientMrn = payload?.data?.patientMrn || payload?.patientMrn
 
   const collectFromArray = (readings: IncomingVital[] | undefined) => {
     if (!Array.isArray(readings)) {
@@ -692,21 +739,38 @@ function extractVitalsUpdate(payload: any): Partial<LiveVitalsState> | null {
 
     const readParamValue = (identifiers: Array<number | string>) => coerceVitalNumber(findParam(identifiers)?.value)
 
-    const nextVitals: Partial<LiveVitalsState> = {}
+    const nextVitals: Partial<LiveVitalsState> & { patientMrn?: string } = {}
+
+    if (patientMrn) {
+      nextVitals.patientMrn = patientMrn
+    }
 
     const spo2 = readParamValue([251, "SpO2", "SPO2", "Oxygen", "oxygen", "oxygenSaturation"])
-    const heartRate = readParamValue([259, "PR", "HR", "Heart Rate", "heartRate", "heart_rate", "Pulse", "Pulse Rate", "pulseRate", "heartbeat", "heartBeat", "BPM", "bpm"])
-    const respiratoryRate = readParamValue([258, "RR", "Respiratory Rate", "respiratoryRate", "respiratory_rate", "respRate", "resp_rate"])
+    const heartRate = readParamValue([201, "HR", "Heart Rate", "heartRate", "heart_rate", "heartbeat", "heartBeat"])
+    const respiratoryRate = readParamValue([258, "RR", "Respiratory Rate (SpO2)", "respiratoryRate", "respiratory_rate", "respRate", "resp_rate", 401])
     const temperature = readParamValue([1051, 1052, "T1", "T2", "Temperature", "temperature"])
     const systolic = readParamValue([351, "NIBP-S", "Systolic", "systolic"])
     const diastolic = readParamValue([352, "NIBP-D", "Diastolic", "diastolic"])
 
-    if (typeof spo2 === "number" && spo2 > 0) nextVitals.oxygen = spo2
-    if (typeof heartRate === "number" && heartRate > 0) nextVitals.heartRate = heartRate
-    if (typeof respiratoryRate === "number" && respiratoryRate > 0) nextVitals.respiratoryRate = respiratoryRate
-    if (typeof temperature === "number" && temperature > 0) nextVitals.temperature = temperature
-    if (typeof systolic === "number" && systolic > 0) nextVitals.systolic = systolic
-    if (typeof diastolic === "number" && diastolic > 0) nextVitals.diastolic = diastolic
+    // Additional parameters
+    const pi = readParamValue([252, "PI", "Perfusion Index", "perfusionIndex"])
+    const pr = readParamValue([259, "PR", "Pulse Rate", "pulseRate"])
+    const pvcs = readParamValue([219, "PVCs", "PVCs/min", "pvcs"])
+    const ews = readParamValue([2051, "EWS-Total", "EWS Total Score"])
+    const gcs = readParamValue([2101, "GCS-Total", "GCS Total Score"])
+
+    if (typeof spo2 === "number" && spo2 !== -1) nextVitals.oxygen = spo2
+    if (typeof heartRate === "number" && heartRate !== -1) nextVitals.heartRate = heartRate
+    if (typeof respiratoryRate === "number" && respiratoryRate !== -1) nextVitals.respiratoryRate = respiratoryRate
+    if (typeof temperature === "number" && temperature !== -1) nextVitals.temperature = temperature
+    if (typeof systolic === "number" && systolic !== -1) nextVitals.systolic = systolic
+    if (typeof diastolic === "number" && diastolic !== -1) nextVitals.diastolic = diastolic
+
+    if (typeof pi === "number" && pi !== -1) nextVitals.pi = pi
+    if (typeof pr === "number" && pr !== -1) nextVitals.pr = pr
+    if (typeof pvcs === "number" && pvcs !== -1) nextVitals.pvcs = pvcs
+    if (typeof ews === "number" && ews !== -1) nextVitals.ews = ews
+    if (typeof gcs === "number" && gcs !== -1) nextVitals.gcs = gcs
 
     return Object.keys(nextVitals).length > 0 ? nextVitals : null
   }
@@ -720,7 +784,10 @@ function extractVitalsUpdate(payload: any): Partial<LiveVitalsState> | null {
     return null
   }
 
-  const nextVitals: Partial<LiveVitalsState> = {}
+  const nextVitals: Partial<LiveVitalsState> & { patientMrn?: string } = {}
+  if (patientMrn) {
+    nextVitals.patientMrn = patientMrn
+  }
 
   const dashboardSpo2 = coerceVitalNumber(dashboardVitals.spo2?.value ?? dashboardVitals.spO2?.value ?? dashboardVitals.spo2 ?? dashboardVitals.oxygen?.value ?? dashboardVitals.oxygen)
   const dashboardHeartRate = coerceVitalNumber(dashboardVitals.heartRate?.value ?? dashboardVitals.heartBeat?.value ?? dashboardVitals.hr?.value ?? dashboardVitals.pulseRate?.value ?? dashboardVitals.pulse?.value ?? dashboardVitals.heartRate ?? dashboardVitals.heartBeat ?? dashboardVitals.hr ?? dashboardVitals.pulseRate ?? dashboardVitals.pulse)
@@ -761,7 +828,7 @@ function extractWaveformPacket(payload: any) {
     channel: Number(waveform?.channel ?? 0) || 0,
     sampleRate: Number(waveform?.sampleRate ?? 0) || 0,
     dataPoints: series,
-    patientMrn: waveformPayload?.patientMrn,
+    patientMrn: waveformPayload?.patientMrn || payload?.patientMrn || payload?.data?.patientMrn || waveformPayload?.mrn || payload?.mrn || payload?.data?.mrn,
   }
 }
 
@@ -916,23 +983,70 @@ export default function IntelliICUPage() {
   const isNetworkPoor = currentSpeed < 3;
 
   const ambRegNo = routeContext.ambRegNo
-  const simulationSeed = hashString([routeContext.patientName, routeContext.patientAge, routeContext.bed, routeContext.ambRegNo].filter(Boolean).join("|") || "intelli-icu")
 
-  const [vitals, setVitals] = useState<LiveVitalsState>({
-    oxygen: 0,
-    heartRate: 0,
-    respiratoryRate: 0,
-    temperature: 0,
-    systolic: 0,
-    diastolic: 0
+  const [patients, setPatients] = useState(PATIENTS)
+
+  const getMrnFromHash = () => {
+    const hash = window.location.hash
+    if (hash === "#1") return "PT001"
+    if (hash === "#2") return "PT002"
+    if (hash === "#3") return "PT003"
+    return "PT001"
+  }
+
+  const [selectedPatientMrn, setSelectedPatientMrn] = useState<string>(getMrnFromHash)
+
+  useEffect(() => {
+    const hashValue = selectedPatientMrn === "PT001" ? "1" : selectedPatientMrn === "PT002" ? "2" : "3"
+    if (window.location.hash !== `#${hashValue}`) {
+      window.location.hash = hashValue
+    }
+  }, [selectedPatientMrn])
+
+  useEffect(() => {
+    const handleHashChange = () => {
+      setSelectedPatientMrn(getMrnFromHash())
+    }
+    window.addEventListener("hashchange", handleHashChange)
+    return () => {
+      window.removeEventListener("hashchange", handleHashChange)
+    }
+  }, [])
+
+  const currentPatient = patients.find(p => p.mrn === selectedPatientMrn) || patients[0]
+  const simulationSeed = hashString([currentPatient.name, currentPatient.age, currentPatient.bed, selectedPatientMrn].filter(Boolean).join("|") || "intelli-icu")
+
+  const [patientsVitals, setPatientsVitals] = useState<Record<string, LiveVitalsState>>({
+    "PT001": { oxygen: 98, heartRate: 0, respiratoryRate: 20, temperature: 0, systolic: 0, diastolic: 0, pi: 4.73, pr: 83 },
+    "PT002": { oxygen: 99, heartRate: 0, respiratoryRate: 0, temperature: 0, systolic: 0, diastolic: 0, pi: 7.59, pr: 83 },
+    "PT003": { oxygen: 99, heartRate: 0, respiratoryRate: 0, temperature: 0, systolic: 0, diastolic: 0, pi: 6.35, pr: 83 },
   })
 
-  const [oxygenSeries, setOxygenSeries] = useState<number[]>([])
-  const [heartSeries, setHeartSeries] = useState<number[]>([])
-  const [respiratorySeries, setRespiratorySeries] = useState<number[]>([])
-  const [temperatureSeries, setTemperatureSeries] = useState<number[]>([])
-  const [bloodPressureSeries, setBloodPressureSeries] = useState<number[]>([])
-  const [waveforms, setWaveforms] = useState<Record<string, WaveformPacket | undefined>>({})
+  const [patientsSeries, setPatientsSeries] = useState<Record<string, {
+    oxygen: number[]
+    heart: number[]
+    respiratory: number[]
+    temperature: number[]
+    bloodPressure: number[]
+    pi: number[]
+    pr: number[]
+    pvcs: number[]
+    ews: number[]
+    gcs: number[]
+  }>>({
+    "PT001": { oxygen: [], heart: [], respiratory: [], temperature: [], bloodPressure: [], pi: [], pr: [], pvcs: [], ews: [], gcs: [] },
+    "PT002": { oxygen: [], heart: [], respiratory: [], temperature: [], bloodPressure: [], pi: [], pr: [], pvcs: [], ews: [], gcs: [] },
+    "PT003": { oxygen: [], heart: [], respiratory: [], temperature: [], bloodPressure: [], pi: [], pr: [], pvcs: [], ews: [], gcs: [] },
+  })
+
+  const [patientsWaveforms, setPatientsWaveforms] = useState<Record<string, Record<string, WaveformPacket | undefined>>>({
+    "PT001": {},
+    "PT002": {},
+    "PT003": {},
+  })
+
+  const [patientsAlarms, setPatientsAlarms] = useState<Record<string, AlarmPacket | null>>({})
+
   const [hasLiveVitals, setHasLiveVitals] = useState(false)
   const [dataMode, setDataMode] = useState<DataMode>("real")
   const [dummyFrame, setDummyFrame] = useState(0)
@@ -951,7 +1065,7 @@ export default function IntelliICUPage() {
     let active = true
 
     const connect = () => {
-      ws = new WebSocket("wss://vital.smartambulance.in/")
+      ws = new WebSocket("wss://testback.intellicure.io/")
 
       ws.onopen = () => {
         console.log("WebSocket connected")
@@ -966,16 +1080,73 @@ export default function IntelliICUPage() {
           const parsed = typeof event.data === "string" ? JSON.parse(event.data) : event.data
           console.log("IntelliICU websocket payload", parsed)
 
+          if (parsed?.type === "patient_update") {
+            const patientData = parsed?.data?.patient
+            if (patientData && patientData.mrn) {
+              const fullName = [patientData.firstName, patientData.lastName].filter(Boolean).join(" ")
+              const formattedName = formatPatientName(fullName)
+              let bedLabel = ""
+              if (patientData.bedLocation) {
+                const parts = patientData.bedLocation.split("&")
+                const bedNum = parts[0]
+                bedLabel = bedNum ? `Bed ${bedNum.padStart(2, "0")}` : patientData.bedLocation
+              }
+              setPatients((prev) =>
+                prev.map((p) =>
+                  p.mrn === patientData.mrn
+                    ? {
+                      ...p,
+                      name: formattedName || p.name,
+                      bed: bedLabel || p.bed,
+                    }
+                    : p
+                )
+              )
+            }
+            return
+          }
+
+          if (parsed?.type === "alarm") {
+            const alarmData = parsed?.data
+            if (alarmData?.patientMrn && alarmData?.alarm) {
+              setPatientsAlarms((prev) => ({
+                ...prev,
+                [alarmData.patientMrn]: alarmData.alarm
+              }))
+            }
+            return
+          }
+
           const vitalsUpdate = extractVitalsUpdate(parsed)
           if (vitalsUpdate) {
+            const mrn = vitalsUpdate.patientMrn || selectedPatientMrn
             setHasLiveVitals(true)
-            setVitals((prev) => ({ ...prev, ...vitalsUpdate }))
+            setPatientsVitals((prev) => ({
+              ...prev,
+              [mrn]: {
+                ...prev[mrn],
+                ...vitalsUpdate
+              }
+            }))
 
-            if (typeof vitalsUpdate.oxygen === "number") setOxygenSeries((history) => [...history.slice(-27), vitalsUpdate.oxygen as number])
-            if (typeof vitalsUpdate.heartRate === "number") setHeartSeries((history) => [...history.slice(-27), vitalsUpdate.heartRate as number])
-            if (typeof vitalsUpdate.respiratoryRate === "number") setRespiratorySeries((history) => [...history.slice(-27), vitalsUpdate.respiratoryRate as number])
-            if (typeof vitalsUpdate.temperature === "number") setTemperatureSeries((history) => [...history.slice(-27), vitalsUpdate.temperature as number])
-            if (typeof vitalsUpdate.systolic === "number") setBloodPressureSeries((history) => [...history.slice(-27), vitalsUpdate.systolic as number])
+            setPatientsSeries((prev) => {
+              const current = prev[mrn] || { oxygen: [], heart: [], respiratory: [], temperature: [], bloodPressure: [], pi: [], pr: [], pvcs: [], ews: [], gcs: [] }
+              return {
+                ...prev,
+                [mrn]: {
+                  oxygen: typeof vitalsUpdate.oxygen === "number" ? [...current.oxygen.slice(-27), vitalsUpdate.oxygen] : current.oxygen,
+                  heart: typeof vitalsUpdate.heartRate === "number" ? [...current.heart.slice(-27), vitalsUpdate.heartRate] : current.heart,
+                  respiratory: typeof vitalsUpdate.respiratoryRate === "number" ? [...current.respiratory.slice(-27), vitalsUpdate.respiratoryRate] : current.respiratory,
+                  temperature: typeof vitalsUpdate.temperature === "number" ? [...current.temperature.slice(-27), vitalsUpdate.temperature] : current.temperature,
+                  bloodPressure: typeof vitalsUpdate.systolic === "number" ? [...current.bloodPressure.slice(-27), vitalsUpdate.systolic] : current.bloodPressure,
+                  pi: typeof vitalsUpdate.pi === "number" ? [...current.pi.slice(-27), vitalsUpdate.pi] : current.pi,
+                  pr: typeof vitalsUpdate.pr === "number" ? [...current.pr.slice(-27), vitalsUpdate.pr] : current.pr,
+                  pvcs: typeof vitalsUpdate.pvcs === "number" ? [...current.pvcs.slice(-27), vitalsUpdate.pvcs] : current.pvcs,
+                  ews: typeof vitalsUpdate.ews === "number" ? [...current.ews.slice(-27), vitalsUpdate.ews] : current.ews,
+                  gcs: typeof vitalsUpdate.gcs === "number" ? [...current.gcs.slice(-27), vitalsUpdate.gcs] : current.gcs,
+                }
+              }
+            })
             return
           }
 
@@ -983,16 +1154,23 @@ export default function IntelliICUPage() {
 
           if (waveformPacket) {
             const waveformKey = normalizeWaveformKey(waveformPacket.waveformName)
+            const mrn = waveformPacket.patientMrn || selectedPatientMrn
 
-            setWaveforms((history) => ({
-              ...history,
-              [waveformKey]: {
-                series: waveformPacket.dataPoints.slice(-300),
-                sampleRate: waveformPacket.sampleRate,
-                channel: waveformPacket.channel,
-                patientMrn: waveformPacket.patientMrn,
-              },
-            }))
+            setPatientsWaveforms((history) => {
+              const current = history[mrn] || {}
+              return {
+                ...history,
+                [mrn]: {
+                  ...current,
+                  [waveformKey]: {
+                    series: waveformPacket.dataPoints.slice(-300),
+                    sampleRate: waveformPacket.sampleRate,
+                    channel: waveformPacket.channel,
+                    patientMrn: waveformPacket.patientMrn,
+                  }
+                }
+              }
+            })
           }
         } catch (err) {
           console.error("WS Parse error", err)
@@ -1043,20 +1221,30 @@ export default function IntelliICUPage() {
     setStreamReloadVersion((version) => version + 1)
   }
 
-  const { oxygen, heartRate, respiratoryRate, temperature, systolic, diastolic } = vitals
   const isRealMode = dataMode === "real"
-  const dummyVitals = buildDummyVitals(dummyFrame, simulationSeed, routeContext.patientAge)
-  const activeVitals = isRealMode ? vitals : dummyVitals
-  const activeWaveforms = isRealMode ? waveforms : buildDummyWaveformMap(dummyFrame, simulationSeed, dummyVitals)
+  const dummyVitals = buildDummyVitals(dummyFrame, simulationSeed, currentPatient.age)
+  const activeVitals = isRealMode
+    ? (patientsVitals[selectedPatientMrn] || { oxygen: 98, heartRate: 0, respiratoryRate: 0, temperature: 0, systolic: 0, diastolic: 0 })
+    : dummyVitals
+
+  const { oxygen, heartRate, respiratoryRate, temperature, systolic, diastolic } = activeVitals
+  const activeWaveforms = isRealMode ? (patientsWaveforms[selectedPatientMrn] || {}) : buildDummyWaveformMap(dummyFrame, simulationSeed, dummyVitals)
   const hasActiveWaveforms = Object.keys(activeWaveforms).length > 0
 
   const ecgSeverity: Severity = !hasLiveVitals ? "stable" : oxygen < 92 || heartRate > 115 || respiratoryRate > 25 || temperature > 38.0 || systolic > 150 ? "critical" : oxygen < 94 || heartRate > 100 || respiratoryRate > 22 || temperature > 37.7 ? "watch" : "stable"
 
-  const oxygenDisplay = isRealMode ? (hasLiveVitals ? vitals.oxygen.toFixed(1) : "--") : activeVitals.oxygen.toFixed(1)
-  const heartRateDisplay = isRealMode ? (hasLiveVitals ? String(vitals.heartRate) : "--") : String(activeVitals.heartRate)
-  const respiratoryDisplay = isRealMode ? (hasLiveVitals ? String(vitals.respiratoryRate) : "--") : String(activeVitals.respiratoryRate)
-  const temperatureDisplay = isRealMode ? (hasLiveVitals ? vitals.temperature.toFixed(1) : "--") : activeVitals.temperature.toFixed(1)
-  const bloodPressureDisplay = isRealMode ? (hasLiveVitals ? `${vitals.systolic}/${vitals.diastolic}` : "--/--") : `${activeVitals.systolic}/${activeVitals.diastolic}`
+  const oxygenDisplay = isRealMode ? (hasLiveVitals && activeVitals.oxygen > 0 ? activeVitals.oxygen.toFixed(1) : "--") : activeVitals.oxygen.toFixed(1)
+  const heartRateDisplay = isRealMode ? (hasLiveVitals && activeVitals.heartRate > 0 ? String(activeVitals.heartRate) : "--") : String(activeVitals.heartRate)
+  const respiratoryDisplay = isRealMode ? (hasLiveVitals && activeVitals.respiratoryRate > 0 ? String(activeVitals.respiratoryRate) : "--") : String(activeVitals.respiratoryRate)
+  const temperatureDisplay = isRealMode ? (hasLiveVitals && activeVitals.temperature > 0 ? activeVitals.temperature.toFixed(1) : "--") : activeVitals.temperature.toFixed(1)
+  const bloodPressureDisplay = isRealMode ? (hasLiveVitals && activeVitals.systolic > 0 ? `${activeVitals.systolic}/${activeVitals.diastolic}` : "--/--") : `${activeVitals.systolic}/${activeVitals.diastolic}`
+
+  const prDisplay = isRealMode ? (hasLiveVitals && activeVitals.pr !== undefined && activeVitals.pr > 0 ? String(activeVitals.pr) : "--") : String(activeVitals.pr ?? 83)
+  const piDisplay = isRealMode ? (hasLiveVitals && activeVitals.pi !== undefined && activeVitals.pi > 0 ? activeVitals.pi.toFixed(2) : "--") : (activeVitals.pi !== undefined ? activeVitals.pi.toFixed(2) : "5.00")
+  const pvcsDisplay = isRealMode ? (hasLiveVitals && activeVitals.pvcs !== undefined && activeVitals.pvcs >= 0 ? String(activeVitals.pvcs) : "--") : String(activeVitals.pvcs ?? 0)
+  const ewsDisplay = isRealMode ? (hasLiveVitals && activeVitals.ews !== undefined && activeVitals.ews >= 0 ? String(activeVitals.ews) : "--") : String(activeVitals.ews ?? 0)
+  const gcsDisplay = isRealMode ? (hasLiveVitals && activeVitals.gcs !== undefined && activeVitals.gcs >= 0 ? String(activeVitals.gcs) : "--") : String(activeVitals.gcs ?? 15)
+
   const dummyContext = buildDummyPatientContext(simulationSeed, activeVitals)
 
   const statusLabel = isRealMode ? (!hasLiveVitals ? "Waiting for live vitals" : ecgSeverity === "critical" ? "Critical watch" : ecgSeverity === "watch" ? "Active watch" : "Stable monitor") : dummyContext.statusLabel
@@ -1066,16 +1254,27 @@ export default function IntelliICUPage() {
     definition,
     packet: activeWaveforms[definition.key],
   }))
-  const oxygenSeriesDisplay = isRealMode ? oxygenSeries : buildTrendSeries(activeVitals.oxygen, 0.9, dummyFrame, hashString(`oxygen:${simulationSeed}`))
-  const heartSeriesDisplay = isRealMode ? heartSeries : buildTrendSeries(activeVitals.heartRate, 4, dummyFrame, hashString(`heart:${simulationSeed}`))
-  const respiratorySeriesDisplay = isRealMode ? respiratorySeries : buildTrendSeries(activeVitals.respiratoryRate, 2, dummyFrame, hashString(`resp:${simulationSeed}`))
-  const temperatureSeriesDisplay = isRealMode ? temperatureSeries : buildTrendSeries(activeVitals.temperature, 0.25, dummyFrame, hashString(`temp:${simulationSeed}`))
-  const bloodPressureSeriesDisplay = isRealMode ? bloodPressureSeries : buildTrendSeries((activeVitals.systolic + activeVitals.diastolic) / 2, 5, dummyFrame, hashString(`bp:${simulationSeed}`))
-  const displayPatientName = isRealMode ? (routeContext.patientName || "Waiting for patient") : (routeContext.patientName || dummyContext.patientName)
-  const displayPatientAge = isRealMode ? (routeContext.patientAge ? String(routeContext.patientAge) : "") : (routeContext.patientAge ? String(routeContext.patientAge) : dummyContext.patientAge)
-  const displayBedLabel = isRealMode ? (routeContext.bed ? `Bed ${routeContext.bed}` : "Bed --") : (routeContext.bed ? `Bed ${routeContext.bed}` : dummyContext.bedLabel)
-  const displayShiftLabel = isRealMode ? (routeContext.shift || "Awaiting handoff") : (routeContext.shift || dummyContext.shiftLabel)
-  const cameraBedLabel = isRealMode ? (routeContext.bed || "Bed --") : (routeContext.bed || dummyContext.cameraBedLabel)
+
+  const currentSeries = patientsSeries[selectedPatientMrn] || { oxygen: [], heart: [], respiratory: [], temperature: [], bloodPressure: [], pi: [], pr: [], pvcs: [], ews: [], gcs: [] }
+
+  const oxygenSeriesDisplay = isRealMode ? currentSeries.oxygen : buildTrendSeries(activeVitals.oxygen, 0.9, dummyFrame, hashString(`oxygen:${simulationSeed}`))
+  const heartSeriesDisplay = isRealMode ? currentSeries.heart : buildTrendSeries(activeVitals.heartRate, 4, dummyFrame, hashString(`heart:${simulationSeed}`))
+  const respiratorySeriesDisplay = isRealMode ? currentSeries.respiratory : buildTrendSeries(activeVitals.respiratoryRate, 2, dummyFrame, hashString(`resp:${simulationSeed}`))
+  const temperatureSeriesDisplay = isRealMode ? currentSeries.temperature : buildTrendSeries(activeVitals.temperature, 0.25, dummyFrame, hashString(`temp:${simulationSeed}`))
+  const bloodPressureSeriesDisplay = isRealMode ? currentSeries.bloodPressure : buildTrendSeries((activeVitals.systolic + activeVitals.diastolic) / 2, 5, dummyFrame, hashString(`bp:${simulationSeed}`))
+
+  const prSeriesDisplay = isRealMode ? currentSeries.pr : buildTrendSeries(activeVitals.pr ?? 83, 3, dummyFrame, hashString(`pr:${simulationSeed}`))
+  const piSeriesDisplay = isRealMode ? currentSeries.pi : buildTrendSeries(activeVitals.pi ?? 5.0, 0.5, dummyFrame, hashString(`pi:${simulationSeed}`))
+  const pvcsSeriesDisplay = isRealMode ? currentSeries.pvcs : buildTrendSeries(activeVitals.pvcs ?? 0, 0.2, dummyFrame, hashString(`pvcs:${simulationSeed}`))
+  const ewsSeriesDisplay = isRealMode ? currentSeries.ews : buildTrendSeries(activeVitals.ews ?? 0, 0.1, dummyFrame, hashString(`ews:${simulationSeed}`))
+  const gcsSeriesDisplay = isRealMode ? currentSeries.gcs : buildTrendSeries(activeVitals.gcs ?? 15, 0, dummyFrame, hashString(`gcs:${simulationSeed}`))
+
+  const displayPatientName = currentPatient.name
+  const displayPatientAge = currentPatient.age
+  const displayBedLabel = currentPatient.bed
+  const displayShiftLabel = currentPatient.shift
+  const cameraBedLabel = currentPatient.bed
+
   const waveformSummaryLabel = isRealMode ? (hasLiveVitals ? `${heartRate} bpm` : hasActiveWaveforms ? "Waveforms live" : "-- bpm") : dummyContext.waveformSummaryLabel
   const waveformSummaryTone = isRealMode ? (hasLiveVitals ? statusTone : hasActiveWaveforms ? "text-success" : "text-muted-foreground") : dummyContext.waveformSummaryTone
   const liveMonitoringLabel = isRealMode
@@ -1086,7 +1285,8 @@ export default function IntelliICUPage() {
       : "Connecting live feed"
     : dummyContext.liveMonitoringLabel
   const clinicalReadoutLabel = isRealMode ? (hasLiveVitals ? (ecgSeverity === "critical" ? "Spike pattern detected" : ecgSeverity === "watch" ? "Irregularity under review" : "Sinus rhythm stable") : hasActiveWaveforms ? "Lead packets streaming" : "Awaiting live stream") : dummyContext.clinicalReadoutLabel
-  const consultationVitals = hasLiveVitals ? vitals : dummyVitals
+  const consultationVitals = activeVitals
+  const currentAlarm = patientsAlarms[selectedPatientMrn]
 
   return (
     <div className="relative min-h-screen overflow-hidden bg-background text-foreground">
@@ -1110,12 +1310,85 @@ export default function IntelliICUPage() {
 
       <main className="relative z-10 grid gap-6 p-4 sm:p-6 lg:p-8 xl:grid-cols-[1.4fr_0.9fr]">
         <section className="space-y-6">
-          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
+          {/* Patient Switcher */}
+          <div className="flex flex-wrap items-center justify-between gap-4 rounded-[1.6rem] border border-white/8 bg-white/[0.03] p-4 shadow-[0_12px_40px_rgba(0,0,0,0.22)] backdrop-blur-md">
+            <div>
+              <p className="text-[10px] font-black uppercase tracking-[0.35em] text-muted-foreground font-mono">Select Patient Monitor</p>
+              <h1 className="mt-0.5 text-base font-black text-foreground">Intelli ICU Center</h1>
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              {patients.map((p) => (
+                <button
+                  key={p.mrn}
+                  type="button"
+                  onClick={() => setSelectedPatientMrn(p.mrn)}
+                  className={`flex items-center gap-2 rounded-full border px-4 py-2 text-xs font-bold transition-all duration-150 cursor-pointer ${selectedPatientMrn === p.mrn
+                      ? "border-cyan-500/40 bg-cyan-500/10 text-cyan-200 shadow-[0_0_16px_rgba(6,182,212,0.15)]"
+                      : "border-white/10 bg-white/5 text-foreground/70 hover:border-white/25 hover:bg-white/10"
+                    }`}
+                >
+                  <span className={`h-1.5 w-1.5 rounded-full ${selectedPatientMrn === p.mrn ? "bg-cyan-400 animate-pulse" : "bg-white/20"}`} />
+                  <span>{p.name} ({p.mrn})</span>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Patient Alarm Banner */}
+          {currentAlarm && (
+            <motion.div
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className={`flex items-center justify-between gap-4 p-4 rounded-[1.6rem] border backdrop-blur-md shadow-lg ${currentAlarm.alarmLevel > 0
+                  ? "border-danger/30 bg-danger/10 text-danger"
+                  : "border-warning/30 bg-warning/10 text-warning"
+                }`}
+            >
+              <div className="flex items-center gap-3">
+                <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${currentAlarm.alarmLevel > 0 ? "bg-danger/20 text-danger" : "bg-warning/20 text-warning"
+                  }`}>
+                  <TriangleAlert className="h-4 w-4 animate-bounce" />
+                </div>
+                <div>
+                  <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground font-mono">
+                    Active Alarm ({currentAlarm.alarmType})
+                  </p>
+                  <p className="text-sm font-bold mt-0.5">{currentAlarm.alarmText}</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setPatientsAlarms((prev) => ({ ...prev, [selectedPatientMrn]: null }))}
+                className="rounded-full bg-white/5 hover:bg-white/10 px-3 py-1.5 text-[10px] font-black uppercase tracking-wider transition cursor-pointer"
+              >
+                Dismiss
+              </button>
+            </motion.div>
+          )}
+
+          <div className="grid gap-4 grid-cols-2 sm:grid-cols-3 md:grid-cols-4 min-[1400px]:grid-cols-5 min-[1700px]:grid-cols-8">
             <VitalCard label="Oxygen Level" value={oxygenDisplay} unit="%" tone="text-cyan-300" series={oxygenSeriesDisplay} icon={<Activity className="h-4 w-4 text-cyan-300" />} />
             <VitalCard label="Heart Rate" value={heartRateDisplay} unit="bpm" tone="text-rose-300" series={heartSeriesDisplay} icon={<Heart className="h-4 w-4 text-rose-300" />} />
             <VitalCard label="Respiratory Rate" value={respiratoryDisplay} unit="bpm" tone="text-emerald-300" series={respiratorySeriesDisplay} icon={<Wind className="h-4 w-4 text-emerald-300" />} />
             <VitalCard label="Temperature" value={temperatureDisplay} unit="°C" tone="text-amber-300" series={temperatureSeriesDisplay} icon={<Thermometer className="h-4 w-4 text-amber-300" />} />
             <VitalCard label="Blood Pressure" value={bloodPressureDisplay} unit="mmHg" tone="text-violet-300" series={bloodPressureSeriesDisplay} icon={<Droplets className="h-4 w-4 text-violet-300" />} />
+
+            {/* Additional Indicators */}
+            {activeVitals.pr !== undefined && activeVitals.pr !== -1 && (
+              <VitalCard label="Pulse Rate" value={prDisplay} unit="bpm" tone="text-fuchsia-300" series={prSeriesDisplay} icon={<Zap className="h-4 w-4 text-fuchsia-300" />} />
+            )}
+            {activeVitals.pi !== undefined && activeVitals.pi !== -1 && (
+              <VitalCard label="Perfusion Index" value={piDisplay} unit="%" tone="text-teal-300" series={piSeriesDisplay} icon={<Percent className="h-4 w-4 text-teal-300" />} />
+            )}
+            {activeVitals.pvcs !== undefined && activeVitals.pvcs !== -1 && (
+              <VitalCard label="PVCs" value={pvcsDisplay} unit="/min" tone="text-red-400" series={pvcsSeriesDisplay} icon={<HeartOff className="h-4 w-4 text-red-400" />} />
+            )}
+            {activeVitals.ews !== undefined && activeVitals.ews !== -1 && (
+              <VitalCard label="EWS Score" value={ewsDisplay} unit="" tone="text-amber-400" series={ewsSeriesDisplay} icon={<ShieldAlert className="h-4 w-4 text-amber-400" />} />
+            )}
+            {activeVitals.gcs !== undefined && activeVitals.gcs !== -1 && (
+              <VitalCard label="GCS Score" value={gcsDisplay} unit="" tone="text-violet-400" series={gcsSeriesDisplay} icon={<Brain className="h-4 w-4 text-violet-400" />} />
+            )}
           </div>
 
           <motion.section
@@ -1177,7 +1450,9 @@ export default function IntelliICUPage() {
               <div className="rounded-[1.8rem] border border-white/5 bg-[#05040a] p-4 shadow-inner shadow-black/50">
                 <div className="mb-4 flex items-center justify-between gap-4">
                   <div>
-                    <p className="text-[9px] font-black uppercase tracking-[0.35em] text-muted-foreground">Waveform matrix</p>
+                    <p className="text-[9px] font-black uppercase tracking-[0.35em] text-muted-foreground font-mono">
+                      Waveform matrix {isRealMode && `(Active: ${Object.keys(activeWaveforms).filter(k => activeWaveforms[k]).join(", ") || "None"}) [Telemetry MRNs: ${Object.keys(patientsWaveforms).filter(mrn => Object.keys(patientsWaveforms[mrn]).length > 0).join(", ") || "None"}]`}
+                    </p>
                     <p className={`mt-1 text-2xl font-black ${waveformSummaryTone}`}>{waveformSummaryLabel}</p>
                   </div>
                   <div className="text-right">
@@ -1281,12 +1556,12 @@ export default function IntelliICUPage() {
             <IcuCallControlPanel
               liveVitals={consultationVitals}
               patientContext={{
-                patientName: routeContext.patientName,
-                patientAge: routeContext.patientAge,
-                bed: routeContext.bed,
-                shift: routeContext.shift,
+                patientName: displayPatientName,
+                patientAge: displayPatientAge,
+                bed: displayBedLabel,
+                shift: displayShiftLabel,
                 diagnosis: routeContext.diagnosis,
-                ambRegNo: routeContext.ambRegNo,
+                ambRegNo: routeContext.ambRegNo || selectedPatientMrn,
               }}
             />
           </motion.section>
