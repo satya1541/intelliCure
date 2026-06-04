@@ -75,6 +75,9 @@ type LiveVitalsState = {
   pvcs?: number
   ews?: number
   gcs?: number
+  gcsEye?: number
+  gcsVerbal?: number
+  gcsMotor?: number
 }
 
 type AlarmPacket = {
@@ -229,6 +232,23 @@ function buildTrendSeries(base: number, variation: number, frame: number, seed: 
   })
 }
 
+function decomposeGCS(total: number) {
+  const gcs = Math.min(Math.max(total, 3), 15)
+  if (gcs === 15) return { gcsEye: 4, gcsVerbal: 5, gcsMotor: 6 }
+  if (gcs === 14) return { gcsEye: 3, gcsVerbal: 5, gcsMotor: 6 }
+  if (gcs === 13) return { gcsEye: 3, gcsVerbal: 4, gcsMotor: 6 }
+  if (gcs === 12) return { gcsEye: 3, gcsVerbal: 4, gcsMotor: 5 }
+  if (gcs === 11) return { gcsEye: 3, gcsVerbal: 3, gcsMotor: 5 }
+  if (gcs === 10) return { gcsEye: 2, gcsVerbal: 3, gcsMotor: 5 }
+  if (gcs === 9)  return { gcsEye: 2, gcsVerbal: 2, gcsMotor: 5 }
+  if (gcs === 8)  return { gcsEye: 2, gcsVerbal: 2, gcsMotor: 4 }
+  if (gcs === 7)  return { gcsEye: 1, gcsVerbal: 2, gcsMotor: 4 }
+  if (gcs === 6)  return { gcsEye: 1, gcsVerbal: 1, gcsMotor: 4 }
+  if (gcs === 5)  return { gcsEye: 1, gcsVerbal: 1, gcsMotor: 3 }
+  if (gcs === 4)  return { gcsEye: 1, gcsVerbal: 1, gcsMotor: 2 }
+  return { gcsEye: 1, gcsVerbal: 1, gcsMotor: 1 }
+}
+
 function buildDummyVitals(frame: number, seed: number, patientAge?: string | number): LiveVitalsState {
   const ageValue = Number(patientAge)
   const age = Number.isFinite(ageValue) ? clamp(ageValue, 16, 92) : 44
@@ -251,6 +271,7 @@ function buildDummyVitals(frame: number, seed: number, patientAge?: string | num
   const pvcs = stress > 0.85 ? Math.round(stress * 3) : 0
   const ews = stress > 0.8 ? Math.round(stress * 4) : 0
   const gcs = clamp(Math.round(15 - stress * 3), 3, 15)
+  const { gcsEye, gcsVerbal, gcsMotor } = decomposeGCS(gcs)
 
   return {
     oxygen: Number(oxygen.toFixed(1)),
@@ -264,6 +285,9 @@ function buildDummyVitals(frame: number, seed: number, patientAge?: string | num
     pvcs,
     ews,
     gcs,
+    gcsEye,
+    gcsVerbal,
+    gcsMotor,
   }
 }
 
@@ -550,6 +574,7 @@ function VitalCard({
   tone,
   series,
   icon,
+  children,
 }: {
   label: string
   value: string
@@ -557,28 +582,29 @@ function VitalCard({
   tone: string
   series: number[]
   icon: React.ReactNode
+  children?: React.ReactNode
 }) {
   return (
     <motion.div
       initial={{ opacity: 0, y: 16 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.45 }}
-      className="glass-card relative overflow-hidden rounded-[1.6rem] border border-white/8 bg-white/[0.03] p-4 shadow-[0_12px_40px_rgba(0,0,0,0.22)]"
+      className="glass-card relative overflow-hidden rounded-[1.2rem] border border-white/8 bg-white/[0.03] p-3 shadow-[0_8px_30px_rgba(0,0,0,0.18)]"
     >
       <div className="absolute inset-0 bg-gradient-to-br from-white/[0.04] to-transparent pointer-events-none" />
       <div className="relative z-10">
-        <div className="flex items-center gap-2 text-[10px] sm:text-[9px] min-[1400px]:text-[10px] font-black uppercase tracking-widest text-muted-foreground">
-          <span className="flex shrink-0 h-7 w-7 items-center justify-center rounded-xl bg-white/5 border border-white/5 text-foreground/90">{icon}</span>
+        <div className="flex items-center gap-1.5 text-[9px] min-[1400px]:text-[9.5px] font-black uppercase tracking-widest text-muted-foreground">
+          <span className="flex shrink-0 h-6 w-6 items-center justify-center rounded-lg bg-white/5 border border-white/5 text-foreground/90">{icon}</span>
           <span className="truncate leading-tight">{label}</span>
         </div>
-        <div className="mt-3 flex items-end gap-2">
-          <span className={`text-3xl font-black tracking-tight ${tone}`}>{value}</span>
-          <span className="pb-1 text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground">{unit}</span>
+        <div className="mt-2.5 flex items-end gap-1.5">
+          <span className={`text-2xl font-black tracking-tight ${tone}`}>{value}</span>
+          <span className="pb-0.5 text-[8.5px] font-bold uppercase tracking-[0.2em] text-muted-foreground">{unit}</span>
         </div>
       </div>
 
-      <div className="relative z-10 mt-4 h-14 rounded-2xl border border-white/5 bg-black/20 p-2 text-current">
-        <Sparkline values={series} tone={tone} />
+      <div className="relative z-10 mt-3 h-11 rounded-xl border border-white/5 bg-black/20 p-1.5 text-current">
+        {children ? children : <Sparkline values={series} tone={tone} />}
       </div>
     </motion.div>
   )
@@ -785,6 +811,9 @@ function extractVitalsUpdate(payload: any): (Partial<LiveVitalsState> & { patien
     const pvcs = readParamValue([219, "PVCs", "PVCs/min", "pvcs"])
     const ews = readParamValue([2051, "EWS-Total", "EWS Total Score"])
     const gcs = readParamValue([2101, "GCS-Total", "GCS Total Score"])
+    const gcsEye = readParamValue([2102, "GCS-Eye", "GCS Eye Opening"])
+    const gcsVerbal = readParamValue([2103, "GCS-Verbal", "GCS Verbal Response"])
+    const gcsMotor = readParamValue([2104, "GCS-Motor", "GCS Motor Response"])
 
     if (typeof spo2 === "number" && spo2 !== -1) nextVitals.oxygen = spo2
     if (typeof heartRate === "number" && heartRate !== -1) nextVitals.heartRate = heartRate
@@ -797,7 +826,17 @@ function extractVitalsUpdate(payload: any): (Partial<LiveVitalsState> & { patien
     if (typeof pr === "number" && pr !== -1) nextVitals.pr = pr
     if (typeof pvcs === "number" && pvcs !== -1) nextVitals.pvcs = pvcs
     if (typeof ews === "number" && ews !== -1) nextVitals.ews = ews
-    if (typeof gcs === "number" && gcs !== -1) nextVitals.gcs = gcs
+    if (typeof gcs === "number" && gcs !== -1) {
+      nextVitals.gcs = gcs
+      const decomposed = decomposeGCS(gcs)
+      nextVitals.gcsEye = typeof gcsEye === "number" && gcsEye !== -1 ? gcsEye : decomposed.gcsEye
+      nextVitals.gcsVerbal = typeof gcsVerbal === "number" && gcsVerbal !== -1 ? gcsVerbal : decomposed.gcsVerbal
+      nextVitals.gcsMotor = typeof gcsMotor === "number" && gcsMotor !== -1 ? gcsMotor : decomposed.gcsMotor
+    } else {
+      if (typeof gcsEye === "number" && gcsEye !== -1) nextVitals.gcsEye = gcsEye
+      if (typeof gcsVerbal === "number" && gcsVerbal !== -1) nextVitals.gcsVerbal = gcsVerbal
+      if (typeof gcsMotor === "number" && gcsMotor !== -1) nextVitals.gcsMotor = gcsMotor
+    }
 
     return Object.keys(nextVitals).length > 0 ? nextVitals : null
   }
@@ -1367,34 +1406,34 @@ export default function IntelliICUPage() {
             <motion.div
               initial={{ opacity: 0, y: -10 }}
               animate={{ opacity: 1, y: 0 }}
-              className={`flex items-center justify-between gap-4 p-4 rounded-[1.6rem] border backdrop-blur-md shadow-lg ${currentAlarm.alarmLevel > 0
+              className={`flex items-center justify-between gap-3 px-3.5 py-2.5 rounded-xl border backdrop-blur-md shadow-md ${currentAlarm.alarmLevel > 0
                   ? "border-danger/30 bg-danger/10 text-danger"
                   : "border-warning/30 bg-warning/10 text-warning"
                 }`}
             >
-              <div className="flex items-center gap-3">
-                <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${currentAlarm.alarmLevel > 0 ? "bg-danger/20 text-danger" : "bg-warning/20 text-warning"
+              <div className="flex items-center gap-2.5">
+                <div className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full ${currentAlarm.alarmLevel > 0 ? "bg-danger/20 text-danger" : "bg-warning/20 text-warning"
                   }`}>
-                  <TriangleAlert className="h-4 w-4 animate-bounce" />
+                  <TriangleAlert className="h-3.5 w-3.5 animate-bounce" />
                 </div>
                 <div>
-                  <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground font-mono">
+                  <p className="text-[8px] sm:text-[9px] font-black uppercase tracking-[0.2em] text-muted-foreground/80 font-mono">
                     Active Alarm ({currentAlarm.alarmType})
                   </p>
-                  <p className="text-sm font-bold mt-0.5">{currentAlarm.alarmText}</p>
+                  <p className="text-xs font-extrabold mt-0.5">{currentAlarm.alarmText}</p>
                 </div>
               </div>
               <button
                 type="button"
                 onClick={() => setPatientsAlarms((prev) => ({ ...prev, [selectedPatientMrn]: null }))}
-                className="rounded-full bg-white/5 hover:bg-white/10 px-3 py-1.5 text-[10px] font-black uppercase tracking-wider transition cursor-pointer"
+                className="rounded-full bg-white/5 hover:bg-white/10 px-3 py-1 text-[9px] font-black uppercase tracking-wider transition cursor-pointer"
               >
                 Dismiss
               </button>
             </motion.div>
           )}
 
-          <div className="grid gap-4 grid-cols-2 sm:grid-cols-3 md:grid-cols-4 min-[1400px]:grid-cols-5 min-[1700px]:grid-cols-8">
+          <div className="grid gap-3 grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 xl:grid-cols-5 min-[1400px]:grid-cols-6 min-[1700px]:grid-cols-8">
             <VitalCard label="Oxygen Level" value={oxygenDisplay} unit="%" tone="text-cyan-300" series={oxygenSeriesDisplay} icon={<Activity className="h-4 w-4 text-cyan-300" />} />
             <VitalCard label="Heart Rate" value={heartRateDisplay} unit="bpm" tone="text-rose-300" series={heartSeriesDisplay} icon={<Heart className="h-4 w-4 text-rose-300" />} />
             <VitalCard label="Respiratory Rate" value={respiratoryDisplay} unit="bpm" tone="text-emerald-300" series={respiratorySeriesDisplay} icon={<Wind className="h-4 w-4 text-emerald-300" />} />
@@ -1415,7 +1454,24 @@ export default function IntelliICUPage() {
               <VitalCard label="EWS Score" value={ewsDisplay} unit="" tone="text-amber-400" series={ewsSeriesDisplay} icon={<ShieldAlert className="h-4 w-4 text-amber-400" />} />
             )}
             {activeVitals.gcs !== undefined && activeVitals.gcs !== -1 && (
-              <VitalCard label="GCS Score" value={gcsDisplay} unit="" tone="text-violet-400" series={gcsSeriesDisplay} icon={<Brain className="h-4 w-4 text-violet-400" />} />
+              <VitalCard label="GCS Score" value={gcsDisplay} unit="" tone="text-violet-400" series={gcsSeriesDisplay} icon={<Brain className="h-4 w-4 text-violet-400" />}>
+                <div className="flex justify-between items-center h-full px-1 text-[9px] font-bold text-white/80">
+                  <div className="flex flex-col items-center justify-center">
+                    <span className="text-[7.5px] uppercase tracking-wider text-muted-foreground font-semibold">Eye</span>
+                    <span className="text-violet-300 font-black text-xs leading-none mt-0.5">{activeVitals.gcsEye ?? '--'}</span>
+                  </div>
+                  <div className="h-5 w-px bg-white/10" />
+                  <div className="flex flex-col items-center justify-center">
+                    <span className="text-[7.5px] uppercase tracking-wider text-muted-foreground font-semibold">Verbal</span>
+                    <span className="text-violet-300 font-black text-xs leading-none mt-0.5">{activeVitals.gcsVerbal ?? '--'}</span>
+                  </div>
+                  <div className="h-5 w-px bg-white/10" />
+                  <div className="flex flex-col items-center justify-center">
+                    <span className="text-[7.5px] uppercase tracking-wider text-muted-foreground font-semibold">Motor</span>
+                    <span className="text-violet-300 font-black text-xs leading-none mt-0.5">{activeVitals.gcsMotor ?? '--'}</span>
+                  </div>
+                </div>
+              </VitalCard>
             )}
           </div>
 
