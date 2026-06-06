@@ -15,14 +15,12 @@ const ROOMS = [
 function formatPatientName(name: string): string {
   if (!name) return ""
   const upper = name.trim().toUpperCase()
-  if (upper === "MISHRA ROHIT" || upper === "ROHIT MISHRA") return "ROHIT MISHRA"
   if (upper === "PANDA RAHUL" || upper === "RAHUL PANDA") return "RAHUL PANDA"
   if (upper === "DAS RANJAN" || upper === "RANJAN DAS") return "RANJAN DAS"
   return name
 }
 
 const PATIENTS = [
-  { mrn: "PT001", name: "ROHIT MISHRA", age: "42", bed: "Bed 04", shift: "Post-round review" },
   { mrn: "PT002", name: "RAHUL PANDA", age: "35", bed: "Bed 07", shift: "Active watch" },
   { mrn: "PT003", name: "RANJAN DAS", age: "58", bed: "Bed 11", shift: "Step-down review" },
 ]
@@ -1054,16 +1052,15 @@ export default function IntelliICUPage() {
 
   const getMrnFromHash = () => {
     const hash = window.location.hash
-    if (hash === "#1") return "PT001"
     if (hash === "#2") return "PT002"
     if (hash === "#3") return "PT003"
-    return "PT001"
+    return "PT002"
   }
 
   const [selectedPatientMrn, setSelectedPatientMrn] = useState<string>(getMrnFromHash)
 
   useEffect(() => {
-    const hashValue = selectedPatientMrn === "PT001" ? "1" : selectedPatientMrn === "PT002" ? "2" : "3"
+    const hashValue = selectedPatientMrn === "PT002" ? "2" : "3"
     if (window.location.hash !== `#${hashValue}`) {
       window.location.hash = hashValue
     }
@@ -1083,7 +1080,6 @@ export default function IntelliICUPage() {
   const simulationSeed = hashString([currentPatient.name, currentPatient.age, currentPatient.bed, selectedPatientMrn].filter(Boolean).join("|") || "intelli-icu")
 
   const [patientsVitals, setPatientsVitals] = useState<Record<string, LiveVitalsState>>({
-    "PT001": { oxygen: 98, heartRate: 0, respiratoryRate: 20, temperature: 0, systolic: 0, diastolic: 0, pi: 4.73, pr: 83 },
     "PT002": { oxygen: 99, heartRate: 0, respiratoryRate: 0, temperature: 0, systolic: 0, diastolic: 0, pi: 7.59, pr: 83 },
     "PT003": { oxygen: 99, heartRate: 0, respiratoryRate: 0, temperature: 0, systolic: 0, diastolic: 0, pi: 6.35, pr: 83 },
   })
@@ -1100,13 +1096,11 @@ export default function IntelliICUPage() {
     ews: number[]
     gcs: number[]
   }>>({
-    "PT001": { oxygen: [], heart: [], respiratory: [], temperature: [], bloodPressure: [], pi: [], pr: [], pvcs: [], ews: [], gcs: [] },
     "PT002": { oxygen: [], heart: [], respiratory: [], temperature: [], bloodPressure: [], pi: [], pr: [], pvcs: [], ews: [], gcs: [] },
     "PT003": { oxygen: [], heart: [], respiratory: [], temperature: [], bloodPressure: [], pi: [], pr: [], pvcs: [], ews: [], gcs: [] },
   })
 
   const [patientsWaveforms, setPatientsWaveforms] = useState<Record<string, Record<string, WaveformPacket | undefined>>>({
-    "PT001": {},
     "PT002": {},
     "PT003": {},
   })
